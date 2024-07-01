@@ -13,6 +13,7 @@ from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss
 from utils.common.loss_function import SSIMLoss
 from utils.model.varnet import VarNet
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
 
@@ -78,20 +79,36 @@ def validate(args, model, data_loader):
     return metric_loss, num_subjects, reconstructions, targets, None, time.perf_counter() - start
 
 
-def save_model(args, exp_dir, epoch, model, optimizer, best_val_loss, is_new_best):
+def save_model(args, exp_dir, epoch, model, optimizer, LRscheduler, best_val_loss, is_new_best):
     torch.save(
         {
             'epoch': epoch,
             'args': args,
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
+            'LRscheduler': LRscheduler.state_dict(),
             'best_val_loss': best_val_loss,
             'exp_dir': exp_dir
         },
         f=exp_dir / 'model.pt'
     )
+
+    #모든 epoch마다 model과 각종 모듈 저장
+    torch.save(
+        {
+            'epoch': epoch,
+            'args': args,
+            'model': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'LRscheduler': LRscheduler.state_dict(),
+            'best_val_loss': best_val_loss,
+            'exp_dir': exp_dir
+        },
+        f=exp_dir / 'model'+str(epoch)+'.pt'
+    )
+
     if is_new_best:
-        shutil.copyfile(exp_dir / 'model.pt', exp_dir / 'best_model.pt')
+        shutil.copyfile(exp_dir / 'model.pt', exp_dir / 'best_model'+str(epoch)+'.pt')
 
 
 def download_model(url, fname):
@@ -140,10 +157,31 @@ def train(args):
     """
 
     loss_type = SSIMLoss().to(device=device)
-    optimizer = torch.optim.Adam(model.parameters(), args.lr)
+
+    # optimizer, LRscheduler 설정
+    optimizer = torch.optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08)
+    LRscheduler = ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5, verbose=True)
+
 
     best_val_loss = 1.
     start_epoch = 0
+
+    ##train중이던 model을 사용할 경우
+    MODEL_FNAMES = args.exp_dir / 'model.pt'
+    if Path(MODEL_FNAMES).exists():
+      pretrained = torch.load(MODEL_FNAMES)
+      pretrained_copy = copy.deepcopy(pretrained['model'])
+      for layer in pretrained_copy.keys():
+        if layer.split('.',2)[1].isdigit() and (args.cascade <= int(layer.split('.',2)[1]) <=11):
+            del pretrained['model'][layer]
+      
+      model.load_state_dict(pretrained['model'])
+      optimizer.load_state_dict(pretrained['optimizer'])
+      LRscheduler.load_state_dict(pretrained['LRscheduler'])
+      best_val_loss = pretrained['best_val_loss']
+      start_epoch = pretrained['epoch']
+    
+    loss_type = SSIMLoss().to(device=device)
 
     
     train_loader = create_data_loaders(data_path = args.data_path_train, args = args, shuffle=True)
@@ -154,6 +192,11 @@ def train(args):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
         
         train_loss, train_time = train_epoch(args, epoch, model, train_loader, optimizer, loss_type)
+
+        #train_loss를 바탕으로 LRscheduler step 진행, lr조정
+        LRscheduler.step(train_loss)
+        lr = LRscheduler.get_last_lr()
+
         val_loss, num_subjects, reconstructions, targets, inputs, val_time = validate(args, model, val_loader)
         
         val_loss_log = np.append(val_loss_log, np.array([[epoch, val_loss]]), axis=0)
@@ -170,7 +213,7 @@ def train(args):
         is_new_best = val_loss < best_val_loss
         best_val_loss = min(best_val_loss, val_loss)
 
-        save_model(args, args.exp_dir, epoch + 1, model, optimizer, best_val_loss, is_new_best)
+        save_model(args, args.exp_dir, epoch + 1, model, optimizer, LRscheduler, best_val_loss, is_new_best)
         print(
             f'Epoch = [{epoch:4d}/{args.num_epochs:4d}] TrainLoss = {train_loss:.4g} '
             f'ValLoss = {val_loss:.4g} TrainTime = {train_time:.4f}s ValTime = {val_time:.4f}s',
@@ -183,3 +226,10 @@ def train(args):
             print(
                 f'ForwardTime = {time.perf_counter() - start:.4f}s',
             )
+
+        """
+        #스케줄러 조기종료 코드 - bad_epoch 분기점 지난 후에의 추이를 보기 위해 주석처리
+        if scheduler.num_bad_epochs > scheduler.patience:
+          print(f'Early stopping at epoch {epoch}...')
+          break
+        """
