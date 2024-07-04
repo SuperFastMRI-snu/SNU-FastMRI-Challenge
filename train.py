@@ -20,6 +20,8 @@ def parse():
     parser.add_argument('-b', '--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('-e', '--num-epochs', type=int, default=10, help='Number of epochs')
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
+    parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=10, help='patience of ReduceLROnPlateau')
+    parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
     parser.add_argument('-r', '--report-interval', type=int, default=20, help='Report interval')
     parser.add_argument('-i', '--save-itr-interval', type=int, default=100, help='itr interval of model save')
     parser.add_argument('-n', '--net-name', type=Path, default='test_varnet', help='Name of network')

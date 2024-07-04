@@ -25,7 +25,7 @@ class SliceData(Dataset):
                     (fname, slice_ind) for slice_ind in range(num_slices)
                 ]
             """
-            # train data의 image_examples는 txt파일에서 가지고 오도록 함
+            # train data의 image_examples는 txt파일에서 가지고 오도록 함(google colab용)
             files_num = len(image_files)
             if files_num==51:
                 # val data인 경우 원래처럼 image_examples 가지고 오기
@@ -49,7 +49,7 @@ class SliceData(Dataset):
                 ]
             """
 
-        # train data의 kspace_examples는 txt파일에서 가지고 오도록 함
+        # train data의 kspace_examples는 txt파일에서 가지고 오도록 함(google colab용)
         files_num = len(kspace_files)
         if files_num==51:
             # val data인 경우 원래처럼 kspace_examples 가지고 오기
