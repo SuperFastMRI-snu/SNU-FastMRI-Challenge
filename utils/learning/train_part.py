@@ -17,43 +17,42 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
 
-def train_epoch(args, epoch, start_itr, model, data_loader, optimizer, LRscheduler, best_val_loss, loss_type):
+def train_epoch(args, epoch, start_itr, model, data_loader, optimizer, LRscheduler, sum_loss, best_val_loss, loss_type):
     model.train()
     start_epoch = start_iter = time.perf_counter()
     len_loader = len(data_loader)
-    total_loss = 0.
+    total_loss = sum_loss
 
-    for iter, data in enumerate(data_loader):
-        # start_itr부터 iter 돌려서 학습
-        if iter < start_itr:
-            continue
+    if start_itr < len_loader: 
+        for iter, data in enumerate(data_loader):
+            if iter < start_itr:
+                continue
+            mask, kspace, target, maximum, _, _ = data
+            mask = mask.cuda(non_blocking=True)
+            kspace = kspace.cuda(non_blocking=True)
+            target = target.cuda(non_blocking=True)
+            maximum = maximum.cuda(non_blocking=True)
 
-        mask, kspace, target, maximum, _, _ = data
-        mask = mask.cuda(non_blocking=True)
-        kspace = kspace.cuda(non_blocking=True)
-        target = target.cuda(non_blocking=True)
-        maximum = maximum.cuda(non_blocking=True)
+            output = model(kspace, mask)
+            loss = loss_type(output, target, maximum)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
 
-        output = model(kspace, mask)
-        loss = loss_type(output, target, maximum)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
+            if iter % args.report_interval == 0:
+                print(
+                    f'Epoch = [{epoch:3d}/{args.num_epochs:3d}] '
+                    f'Iter = [{iter:4d}/{len(data_loader):4d}] '
+                    f'Loss = {loss.item():.4g} '
+                    f'Time = {time.perf_counter() - start_iter:.4f}s',
+                )
+                start_iter = time.perf_counter()
 
-        if iter % args.report_interval == 0:
-            print(
-                f'Epoch = [{epoch:3d}/{args.num_epochs:3d}] '
-                f'Iter = [{iter:4d}/{len(data_loader):4d}] '
-                f'Loss = {loss.item():.4g} '
-                f'Time = {time.perf_counter() - start_iter:.4f}s',
-            )
-            start_iter = time.perf_counter()
-
-        # 한 epoch내에서 iter가 save_itr_interval의 배수가 되면 model.pt에 저장
-        ## train에서 연결이 끊겼을 때 train.sh하면 가장 최근에 저장된 iter부터 train 재시작함
-        if iter % args.save_itr_interval == 0:
-            save_model(args, args.exp_dir, epoch, iter+1, model, optimizer, LRscheduler, best_val_loss, False)
+            # 한 epoch내에서 iter가 save_itr_interval의 배수가 되면 model.pt에 저장
+            ## train에서 연결이 끊겼을 때 train.sh하면 가장 최근에 저장된 iter부터 train 재시작함
+            if iter % args.save_itr_interval == 0:
+                save_model(args, args.exp_dir, epoch, iter+1, model, optimizer, LRscheduler, total_loss, best_val_loss, False)
 
     total_loss = total_loss / len_loader
     return total_loss, time.perf_counter() - start_epoch, len_loader
@@ -89,7 +88,7 @@ def validate(args, model, data_loader):
     return metric_loss, num_subjects, reconstructions, targets, None, time.perf_counter() - start
 
 
-def save_model(args, exp_dir, epoch, itr, model, optimizer, LRscheduler, best_val_loss, is_new_best):
+def save_model(args, exp_dir, epoch, itr, model, optimizer, LRscheduler, sum_loss, best_val_loss, is_new_best):
     # 한 epoch내에서 iter가 save_itr_interval의 배수일 때 model.pt에 저장
     # 한 epoch에서의 train이 끝나고 validate하기 전에 model.pt에 저장
     # 한 epoch에서의 train과 validate이 모두 끝났을 때 model.pt에 저장
@@ -103,6 +102,7 @@ def save_model(args, exp_dir, epoch, itr, model, optimizer, LRscheduler, best_va
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'LRscheduler': LRscheduler.state_dict(),
+            'sum_loss': sum_loss,
             'best_val_loss': best_val_loss,
             'exp_dir': exp_dir
         },
@@ -120,6 +120,7 @@ def save_model(args, exp_dir, epoch, itr, model, optimizer, LRscheduler, best_va
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'LRscheduler': LRscheduler.state_dict(),
+                'sum_loss': 0,
                 'best_val_loss': best_val_loss,
                 'exp_dir': exp_dir
             },
@@ -183,7 +184,7 @@ def train(args):
     optimizer = torch.optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-08)
     LRscheduler = ReduceLROnPlateau(optimizer, mode='min', patience=args.lr_scheduler_patience, factor=args.lr_scheduler_factor, verbose=True)
 
-
+    sum_loss = 0.
     best_val_loss = 1.
     start_epoch = 0
     start_itr = 0
@@ -200,6 +201,8 @@ def train(args):
       model.load_state_dict(pretrained['model'])
       optimizer.load_state_dict(pretrained['optimizer'])
       LRscheduler.load_state_dict(pretrained['LRscheduler'])
+
+      sum_loss = pretrained['sum_loss']
       best_val_loss = pretrained['best_val_loss']
       start_epoch = pretrained['epoch']
       start_itr = pretrained['itr']
@@ -214,11 +217,11 @@ def train(args):
     for epoch in range(start_epoch, args.num_epochs):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
         
-        train_loss, train_time, end_itr = train_epoch(args, epoch, start_itr, model, train_loader, optimizer, LRscheduler, best_val_loss, loss_type)
+        train_loss, train_time, end_itr = train_epoch(args, epoch, start_itr, model, train_loader, optimizer, LRscheduler, sum_loss, best_val_loss, loss_type)
 
         # 한 epoch에서의 train이 끝나고 validate하기 전에 model.pt에 저장
         ## validate에서 연결이 끊겼을 때 train.sh하면 해당 epoch의 train은 패스하고 validate부터 재시작함
-        save_model(args, args.exp_dir, epoch, end_itr, model, optimizer, LRscheduler, best_val_loss, False)
+        save_model(args, args.exp_dir, epoch, end_itr, model, optimizer, LRscheduler, 0, best_val_loss, False)
 
         val_loss, num_subjects, reconstructions, targets, inputs, val_time = validate(args, model, val_loader)
         
@@ -244,7 +247,7 @@ def train(args):
         # 각 epoch마다 train과 validate이 끝난 model 개별 저장
         # 각 epoch마다 validate이 끝난 후 best_val_loss 가진 model이면 best_model 개별 저장
         ## validate의 결과로 나온 best_val_loss 최신화함
-        save_model(args, args.exp_dir, epoch + 1, 0, model, optimizer, LRscheduler, best_val_loss, is_new_best)
+        save_model(args, args.exp_dir, epoch + 1, 0, model, optimizer, LRscheduler, 0, best_val_loss, is_new_best)
         print(
             f'Epoch = [{epoch:4d}/{args.num_epochs:4d}] TrainLoss = {train_loss:.4g} '
             f'ValLoss = {val_loss:.4g} TrainTime = {train_time:.4f}s ValTime = {val_time:.4f}s',
