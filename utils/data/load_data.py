@@ -74,13 +74,13 @@ class SliceData(Dataset):
     def _get_metadata2(self, data_type):
         examples = []
         if data_type == 'image':
-            with open("/content/drive/MyDrive/Data/train_image_examples.txt", "r") as f:
+            with open("/content/drive/MyDrive/Data/train_image_examples_mini.txt", "r") as f:
                 image_examples = f.read()
                 for line in image_examples.split('\n'):
                     fname, dataslice = line.split()
                     examples.append(tuple((Path(fname), int(dataslice))))
         elif data_type == 'kspace':
-            with open("/content/drive/MyDrive/Data/train_kspace_examples.txt", "r") as f:
+            with open("/content/drive/MyDrive/Data/train_kspace_examples_mini.txt", "r") as f:
                 kspace_examples = f.read()
                 for line in kspace_examples.split('\n'):
                     fname, dataslice = line.split()
