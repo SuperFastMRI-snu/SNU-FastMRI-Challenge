@@ -45,7 +45,8 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
                 optimizer.step()
                 optimizer.zero_grad()
 
-            total_loss += loss.item() * acc_steps
+            loss *= acc_steps
+            total_loss += loss.item()
 
             if iter % args.report_interval == 0:
                 print(
@@ -229,6 +230,8 @@ def train(args):
         # 한 epoch에서의 train이 끝나고 validate하기 전에 model.pt에 저장
         ## validate에서 연결이 끊겼을 때 train.sh하면 해당 epoch의 train은 패스하고 validate부터 재시작함
         save_model(args, args.exp_dir, epoch, end_itr, model, optimizer, LRscheduler, 0, best_val_loss, False)
+        start_itr = 0
+        sum_loss = 0 
 
         val_loss, num_subjects, reconstructions, targets, inputs, val_time = validate(args, model, val_loader)
         
@@ -254,7 +257,7 @@ def train(args):
         # 각 epoch마다 train과 validate이 끝난 model 개별 저장
         # 각 epoch마다 validate이 끝난 후 best_val_loss 가진 model이면 best_model 개별 저장
         ## validate의 결과로 나온 best_val_loss 최신화함
-        save_model(args, args.acc_steps, args.exp_dir, epoch + 1, 0, model, optimizer, LRscheduler, 0, best_val_loss, is_new_best)
+        save_model(args, args.exp_dir, epoch + 1, 0, model, optimizer, LRscheduler, 0, best_val_loss, is_new_best)
         print(
             f'Epoch = [{epoch:4d}/{args.num_epochs:4d}] TrainLoss = {train_loss:.4g} '
             f'ValLoss = {val_loss:.4g} TrainTime = {train_time:.4f}s ValTime = {val_time:.4f}s',
