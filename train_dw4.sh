@@ -1,7 +1,7 @@
 python train.py \
   -b 1 \
   -a 4 \
-  -e 5 \
+  -e 15 \
   -l 0.001 \
   -p 2 \
   -f 0.2 \

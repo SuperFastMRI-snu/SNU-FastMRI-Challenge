@@ -232,7 +232,7 @@ def train(args):
         save_model(args, args.exp_dir, epoch, end_itr, model, optimizer, LRscheduler, 0, best_val_loss, False)
         start_itr = 0
         sum_loss = 0 
-
+        
         val_loss, num_subjects, reconstructions, targets, inputs, val_time = validate(args, model, val_loader)
         
         val_loss_log = np.append(val_loss_log, np.array([[epoch, val_loss]]), axis=0)
@@ -248,7 +248,6 @@ def train(args):
 
         # val_loss를 바탕으로 LRscheduler step 진행, lr조정
         LRscheduler.step(val_loss)
-        lr = LRscheduler.get_last_lr()
 
         is_new_best = val_loss < best_val_loss
         best_val_loss = min(best_val_loss, val_loss)
@@ -262,14 +261,18 @@ def train(args):
             f'Epoch = [{epoch:4d}/{args.num_epochs:4d}] TrainLoss = {train_loss:.4g} '
             f'ValLoss = {val_loss:.4g} TrainTime = {train_time:.4f}s ValTime = {val_time:.4f}s',
         )
-
+        
+        
         if is_new_best:
             print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@NewRecord@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-            start = time.perf_counter()
-            save_reconstructions(reconstructions, args.val_dir, targets=targets, inputs=inputs)
-            print(
-                f'ForwardTime = {time.perf_counter() - start:.4f}s',
-            )
+        
+        #매 epoch마다 val reconstructions 저장
+        start = time.perf_counter()
+        save_reconstructions(reconstructions, args.val_dir, epoch + 1, targets=targets, inputs=inputs)
+        print(
+            f'Epoch {epoch + 1} val reconstructions saved!'
+            f'ForwardTime = {time.perf_counter() - start:.4f}s',
+        )
 
         """
         #스케줄러 조기종료 코드 - bad_epoch 분기점 지난 후에의 추이를 보기 위해 주석처리

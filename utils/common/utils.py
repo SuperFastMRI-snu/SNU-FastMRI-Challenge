@@ -9,8 +9,9 @@ import h5py
 import numpy as np
 import torch
 import random
+from pathlib import Path
 
-def save_reconstructions(reconstructions, out_dir, targets=None, inputs=None):
+def save_reconstructions(reconstructions, out_dir, epoch, targets=None, inputs=None):
     """
     Saves the reconstructions from a model into h5 files that is appropriate for submission
     to the leaderboard.
@@ -22,15 +23,18 @@ def save_reconstructions(reconstructions, out_dir, targets=None, inputs=None):
             should be saved.
         target (np.array): target array
     """
-    out_dir.mkdir(exist_ok=True, parents=True)
+    # 모든 epoch마다 recon 따로 저장
+    out_dir_epoch =  Path(str(out_dir) + '/recon' + str(epoch))
+
+    out_dir_epoch.mkdir(exist_ok=True, parents=True)
     for fname, recons in reconstructions.items():
-        with h5py.File(out_dir / fname, 'w') as f:
+        with h5py.File(out_dir_epoch / fname, 'w') as f:
             f.create_dataset('reconstruction', data=recons)
             if targets is not None:
                 f.create_dataset('target', data=targets[fname])
             if inputs is not None:
                 f.create_dataset('input', data=inputs[fname])
-
+    
 def ssim_loss(gt, pred, maxval=None):
     """Compute Structural Similarity Index Metric (SSIM)
        ssim_loss is defined as (1 - ssim)
