@@ -12,7 +12,8 @@ from collections import defaultdict
 from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss
 from utils.common.loss_function import SSIMLoss
-from utils.model.varnet import VarNet
+from utils.model.feature_varnet3 import FIVarNet_acc_fit
+
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
@@ -28,13 +29,17 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
         for iter, data in enumerate(data_loader):
             if iter < start_itr:
                 continue
-            mask, kspace, target, maximum, _, _ = data
+            mask, kspace, target, maximum, fname, _ = data
             mask = mask.cuda(non_blocking=True)
             kspace = kspace.cuda(non_blocking=True)
             target = target.cuda(non_blocking=True)
             maximum = maximum.cuda(non_blocking=True)
 
-            output = model(kspace, mask)
+            # 파일이름에서 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
+            # FIVarNet_acc_fit model에만 사용
+            acceleration = int(str(fname)[11: str(fname).rfind('_')])
+            output = model(kspace, mask, acceleration)
+
             loss = loss_type(output, target, maximum)
 
             # gradient accumulation을 위해 acc_steps로 나누어서 back prop후 optimizer 사용
@@ -77,7 +82,11 @@ def validate(args, model, data_loader):
             mask, kspace, target, _, fnames, slices = data
             kspace = kspace.cuda(non_blocking=True)
             mask = mask.cuda(non_blocking=True)
-            output = model(kspace, mask)
+
+            # 파일이름에서 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
+            # FIVarNet_acc_fit model에만 사용
+            acceleration = int(str(fnames)[11: str(fnames).rfind('_')])
+            output = model(kspace, mask, acceleration)
 
             for i in range(output.shape[0]):
                 reconstructions[fnames[i]][int(slices[i])] = output[i].cpu().numpy()
@@ -165,7 +174,7 @@ def train(args):
     torch.cuda.set_device(device)
     print('Current cuda device: ', torch.cuda.current_device())
 
-    model = VarNet(num_cascades=args.cascade, 
+    model = FIVarNet_acc_fit(num_cascades=args.cascade, 
                    chans=args.chans, 
                    sens_chans=args.sens_chans)
     model.to(device=device)
@@ -248,6 +257,8 @@ def train(args):
 
         # val_loss를 바탕으로 LRscheduler step 진행, lr조정
         LRscheduler.step(val_loss)
+        last_lr = LRscheduler.get_last_lr()
+        print(f'Learning Rate: {last_lr}')
 
         is_new_best = val_loss < best_val_loss
         best_val_loss = min(best_val_loss, val_loss)
@@ -270,7 +281,7 @@ def train(args):
         start = time.perf_counter()
         save_reconstructions(reconstructions, args.val_dir, epoch + 1, targets=targets, inputs=inputs)
         print(
-            f'Epoch {epoch + 1} val reconstructions saved!'
+            f'Epoch {epoch + 1} val reconstructions saved! '
             f'ForwardTime = {time.perf_counter() - start:.4f}s',
         )
 

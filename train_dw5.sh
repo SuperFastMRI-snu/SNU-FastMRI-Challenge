@@ -1,0 +1,19 @@
+python train.py \
+  -b 1 \
+  -a 4 \
+  -e 15 \
+  -l 0.001 \
+  -p 2 \
+  -f 0.2 \
+  -r 50 \
+  -i 200 \
+  -n 'test_varnet5' \
+  -t '/content/drive/MyDrive/Data/train/' \
+  -v '/content/drive/MyDrive/Data/val/' \
+  --cascade 3 \
+  --chans 12 \
+  --sens_chans 5 \
+  --input-key 'kspace' \
+  --target-key 'image_label' \
+  --max-key 'max' \
+  --seed 430
