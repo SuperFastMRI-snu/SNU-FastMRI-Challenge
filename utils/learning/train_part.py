@@ -13,6 +13,8 @@ from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss
 from utils.common.loss_function import SSIMLoss
 from utils.model.varnet import VarNet
+from utils.mraugment.data_augment import DataAugmentor
+from utils.mraugment.data_transforms import VarNetDataTransform
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
@@ -70,8 +72,9 @@ def validate(args, model, data_loader):
             kspace = kspace.cuda(non_blocking=True)
             mask = mask.cuda(non_blocking=True)
             output = model(kspace, mask)
+            print(f'output.shape[0]: {output.shape[0]}')
 
-            for i in range(output.shape[0]):
+            for i in range(output.shape[0]): # (KYG) output.shape[0] 은 1이다. 왜? for 문에서 data당 슬라이스 한 개씩만 들어오기 때문
                 reconstructions[fnames[i]][int(slices[i])] = output[i].cpu().numpy()
                 targets[fnames[i]][int(slices[i])] = target[i].numpy()
 
@@ -99,7 +102,7 @@ def save_model(args, exp_dir, epoch, itr, model, optimizer, LRscheduler, best_va
             'LRscheduler': LRscheduler.state_dict(),
             'best_val_loss': best_val_loss,
             'exp_dir': exp_dir
-        },
+        }, # (KYG) dictionary type 으로 저장함.
         f=exp_dir / 'model.pt'
     )
 
@@ -198,14 +201,22 @@ def train(args):
     
     loss_type = SSIMLoss().to(device=device)
 
+    # -----------------
+    # data augmentation
+    # -----------------
+    # initialize data augmentation pipeline
+    augmentor = DataAugmentor(args, args.current_epoch)# args에 current_epoch 변수 추가함. 그걸 활용할 것.
+    # ------------------
+
     
-    train_loader = create_data_loaders(data_path = args.data_path_train, args = args, shuffle=True)
+    train_loader = create_data_loaders(data_path = args.data_path_train, args = args, DataAugmentor = augmentor ,shuffle=True) #여기에 dataaugmentor를 argument 로 넣어줘야 함.
     val_loader = create_data_loaders(data_path = args.data_path_val, args = args)
-    
+
     val_loss_log = np.empty((0, 2))
     for epoch in range(start_epoch, args.num_epochs):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
         
+        args.current_epoch = epoch
         train_loss, train_time = train_epoch(args, epoch, start_itr, model, train_loader, optimizer, LRscheduler, best_val_loss, loss_type)
 
         # train_loss를 바탕으로 LRscheduler step 진행, lr조정

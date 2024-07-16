@@ -4,12 +4,12 @@ python train.py \
   -l 0.001 \
   -r 20 \
   -i 100 \
-  -n 'test_varnet' \
-  -t '/content/drive/MyDrive/Data/val/' \
+  -n 'test_varnet_mraug' \
+  -t '/content/drive/MyDrive/Data/train/' \
   -v '/content/drive/MyDrive/Data/val/' \
-  --cascade 1 \
-  --chans 9 \
-  --sens_chans 4 \
+  --cascade 4 \
+  --chans 8 \
+  --sens_chans 6 \
   --input-key 'kspace' \
   --target-key 'image_label' \
   --max-key 'max' \

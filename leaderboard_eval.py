@@ -62,7 +62,7 @@ def forward(args):
     idx = 0
     ssim_calculator = SSIM().to(device=device)
     with torch.no_grad():
-        for i_subject in range(1):
+        for i_subject in range(58):
             l_fname = os.path.join(args.leaderboard_data_path, 'brain_test' + str(i_subject+1) + '.h5')
             y_fname = os.path.join(args.your_data_path, 'brain_test' + str(i_subject+1) + '.h5')
             with h5py.File(l_fname, "r") as hf:
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     """
     Modify Path Below To Test Your Results
     """
-    parser.add_argument('-yp', '--path_your_data', type=Path, default='../result/test_Unet/reconstructions_leaderboard/')
+    parser.add_argument('-yp', '--path_your_data', type=Path, default='../result/test_Varnet/reconstructions_leaderboard/')
     parser.add_argument('-key', '--output_key', type=str, default='reconstruction')
     
     args = parser.parse_args()

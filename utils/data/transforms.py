@@ -10,12 +10,16 @@ def to_tensor(data):
     Returns:
         torch.Tensor: PyTorch version of data
     """
-    return torch.from_numpy(data)
+    if isinstance(data, torch.Tensor):
+      return data
+    else:
+      return torch.from_numpy(data)
 
 class DataTransform:
     def __init__(self, isforward, max_key):
         self.isforward = isforward
         self.max_key = max_key
+        
     def __call__(self, mask, input, target, attrs, fname, slice):
         if not self.isforward:
             target = to_tensor(target)
