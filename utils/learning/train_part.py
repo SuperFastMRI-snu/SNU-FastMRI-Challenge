@@ -12,7 +12,7 @@ from collections import defaultdict
 from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss
 from utils.common.loss_function import SSIMLoss
-from utils.model.varnet import VarNet
+from utils.model.hybrid_varnet import HybridVarNet
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
@@ -35,6 +35,7 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             maximum = maximum.cuda(non_blocking=True)
 
             output = model(kspace, mask)
+
             loss = loss_type(output, target, maximum)
 
             # gradient accumulation을 위해 acc_steps로 나누어서 back prop후 optimizer 사용
@@ -165,7 +166,7 @@ def train(args):
     torch.cuda.set_device(device)
     print('Current cuda device: ', torch.cuda.current_device())
 
-    model = VarNet(num_cascades=args.cascade, 
+    model = HybridVarNet(num_cascades=args.cascade, 
                    chans=args.chans, 
                    sens_chans=args.sens_chans)
     model.to(device=device)
