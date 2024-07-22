@@ -34,7 +34,6 @@ def parse():
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')
     parser.add_argument('--seed', type=int, default=430, help='Fix random seed')
 
-    parser.add_argument('--current_epoch', type=int, default=0, help='current epoch')
     add_augmentation_specific_args(parser)
     args = parser.parse_args()
     return args
@@ -58,7 +57,7 @@ def add_augmentation_specific_args(parser):
     parser.add_argument(
         '--aug_delay', 
         type=int, 
-        default=0,
+        default=1,
         help='Number of epochs at the beginning of training without data augmentation. The schedule in --aug_schedule will be adjusted so that at the last epoch the augmentation strength is --aug_strength.'
     )
     parser.add_argument(

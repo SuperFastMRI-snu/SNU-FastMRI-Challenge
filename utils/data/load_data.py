@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import time
 import torch
+import random
 from utils.mraugment.data_augment import DataAugmentor
 from fastmri.data.subsample import create_mask_for_mask_type
 from fastmri.data.transforms import apply_mask
@@ -22,7 +23,20 @@ class SliceData(Dataset):
         self.DataAugmentor = DataAugmentor
         self.mask_type = args.mask_type
         self.center_fractions = args.center_fractions
-        self.accelerations = args.accelerations
+
+        # mask list 만들기
+        mask_acc = [4, 5, 6, 7, 8, 9, 10, 11]
+        mask_list = {}
+
+        # data에서 중요한 것은 [-2] 위치의 원소. mask 벡터의 크기가 바로 [-2] 원소이다.
+        data_list = [torch.randn(16, 768, 396, 2), torch.randn(16, 396, 768, 2), torch.randn(4, 768, 392, 2)]
+        for acc in mask_acc:
+          for data in data_list:
+            mask_func = create_mask_for_mask_type(self.mask_type, self.center_fractions, [acc])
+            _, mask = apply_mask(data, mask_func, None) # mask.shape = [1, 1, ?, 1]
+            mask = np.array(torch.squeeze(mask))
+            mask_list[(acc, data.shape[-2])] = mask # 마스크를 찾을 때에는 acc와 input의 열의 개수로 찾아야 함
+        self.mask_list = mask_list
 
         if not forward:
             image_files = list(Path(root / "image").iterdir())
@@ -42,14 +56,14 @@ class SliceData(Dataset):
                 for fname in sorted(image_files):
                     num_slices = self._get_metadata(fname)
 
-                    # MRaugment를 하는지 안 하는지 세 번째 원소로 표시
+                    # 세번째 원소: random mask 적용 여부
                     self.image_examples += [
                         (fname, slice_ind, False) for slice_ind in range(num_slices)
                     ]
-                    if DataAugmentor == None: continue
                     self.image_examples += [
                         (fname, slice_ind, True) for slice_ind in range(num_slices)
                     ]
+                    
             else:
                 self.image_examples = self._get_metadata2('image', DataAugmentor!=None)
 
@@ -71,11 +85,10 @@ class SliceData(Dataset):
             for fname in sorted(kspace_files):
                 num_slices = self._get_metadata(fname)
 
-                # MRaugment를 하는지 안 하는지 세 번째 원소로 표시
+                # 세번째 원소: random mask 적용 여부
                 self.kspace_examples += [
                     (fname, slice_ind, False) for slice_ind in range(num_slices)
                 ]
-                if DataAugmentor == None: continue
                 self.kspace_examples += [
                     (fname, slice_ind, True) for slice_ind in range(num_slices)
                 ]
@@ -98,19 +111,17 @@ class SliceData(Dataset):
                 image_examples = f.read()
                 for line in image_examples.split('\n'):
                     fname, dataslice = line.split()
-                    # MRaugment를 하는지 안 하는지 세 번째 원소로 표시
+                    # 세번째 원소: MRaugment 적용 여부, 네번째 원소: random mask 적용 여부
                     examples.append(tuple((Path(fname), int(dataslice), False)))
-                    if not aug_on: continue
-                    examples.append(tuple((Path(fname), int(dataslice), True))) # 튜플의 마지막 원소는 augmentation 할 여부
+                    examples.append(tuple((Path(fname), int(dataslice), True)))
         elif data_type == 'kspace':
             with open("/content/drive/MyDrive/Data/train_kspace_examples_mini.txt", "r") as f:
                 kspace_examples = f.read()
                 for line in kspace_examples.split('\n'):
                     fname, dataslice = line.split()
-                    # MRaugment를 하는지 안 하는지 세 번째 원소로 표시
+                    # 세번째 원소: MRaugment 적용 여부, 네번째 원소: random mask 적용 여부
                     examples.append(tuple((Path(fname), int(dataslice), False)))
-                    if not aug_on: continue
-                    examples.append(tuple((Path(fname), int(dataslice), True))) # 튜플의 마지막 원소는 augmentation 할 여부
+                    examples.append(tuple((Path(fname), int(dataslice), True)))
         return examples
 
     def __len__(self):
@@ -119,57 +130,54 @@ class SliceData(Dataset):
     def __getitem__(self, i):
         # image_aug 와 kspace_aug는 augmentation이 필요한지의 여부
         if not self.forward:
-            image_fname, _, image_aug = self.image_examples[i]
-        kspace_fname, dataslice, kspace_aug = self.kspace_examples[i]
+            image_fname, _, _= self.image_examples[i]
+        kspace_fname, dataslice, kspace_random_mask = self.kspace_examples[i]
         
         # image_file을 열어서 target_size 가져오기
         with h5py.File(image_fname, "r") as hf:
             target_size = hf[self.target_key][dataslice].shape
 
-        if not kspace_aug:
-          with h5py.File(kspace_fname, "r") as hf:
-              input = hf[self.input_key][dataslice]
-              mask =  np.array(hf["mask"]) # hf파일에 있는 mask.shape은 (396,)
-          if self.forward:
-              target = -1
-              attrs = -1
-          else:
-              with h5py.File(image_fname, "r") as hf:
-                  target = hf[self.target_key][dataslice]
-                  attrs = dict(hf.attrs)
-        else:
-          with h5py.File(kspace_fname, "r") as hf:
-              input = hf[self.input_key][dataslice]
+        # kspace_fname에서 acc 정보 가져오기(mask 만들 때 사용)
+        str_kspace_fname = str(kspace_fname)
+        acc = int(str_kspace_fname.split('_')[1][-1])
 
-              # DataAugmentor에 들어가는 input은 마지막 두 차원이 실수부와 허수부로 나뉘어져 있어야 한다.
-              input = torch.from_numpy(input)
-              input = torch.stack((input.real, input.imag), dim=-1)
+        # 파일 열어서 kspace, image 가져온 후 augment하기
+        with h5py.File(kspace_fname, "r") as hf:
+            input = hf[self.input_key][dataslice]
 
-              # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기
-              input, target = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
-              
-              # input에 맞는 mask 만들기
-              seed = None
-              mask_func = create_mask_for_mask_type(self.mask_type, self.center_fractions, self.accelerations)
-              _, mask = apply_mask(input, mask_func, seed)
-              mask = np.array(torch.squeeze(mask))
+            # DataAugmentor에 들어가는 input은 마지막 차원이 실수부와 허수부로 나뉘어져 있어야 한다.
+            input = torch.from_numpy(input)
+            input = torch.stack((input.real, input.imag), dim=-1)
 
-              if(input.shape[-1]==2):
-                real_part = input[..., 0]
-                imaginary_part = input[..., 1]
-                complex_tensor = torch.complex(real_part, imaginary_part)
-                input = complex_tensor
-
-          if self.forward:
-              target = -1
-              attrs = -1
-          else:
-              with h5py.File(image_fname, "r") as hf:
-                  # 위에서 만든 augment 적용된 target을 사용
-                  # target = hf[self.target_key][dataslice]
-                  attrs = dict(hf.attrs)
+            # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기
+            input, target = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
             
+            # random_mask 여부에 따라 mask 생성. 마스크 생성시 self.mask_list에서 마스크 가져다 씀.
+            if kspace_random_mask:
+              mask = self.mask_list[(self.random_acc(acc), input.shape[-2])]
+            else:
+              mask = self.mask_list[(acc, input.shape[-2])]
+
+            real_part = input[..., 0]
+            imaginary_part = input[..., 1]
+            complex_tensor = torch.complex(real_part, imaginary_part)
+            input = complex_tensor
+
+            if self.forward:
+                target = -1
+                attrs = -1
+            else:
+                with h5py.File(image_fname, "r") as hf:
+                    attrs = dict(hf.attrs)
+        
         return self.transform(mask, input, target, attrs, kspace_fname.name, dataslice)
+    
+    def random_acc(self, acc):
+      acc_list = [4, 5, 6, 7, 8, 9, 10, 11]
+      if acc in acc_list:
+        acc_list.remove(acc)
+      random_acc = random.choice(acc_list)
+      return random_acc
 
 
 def create_data_loaders(data_path, args, DataAugmentor=None, shuffle=False, isforward=False):

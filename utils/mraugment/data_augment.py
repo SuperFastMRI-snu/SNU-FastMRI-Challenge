@@ -216,13 +216,13 @@ class DataAugmentor:
     to the training data.
     """
         
-    def __init__(self, hparams, current_epoch):
+    def __init__(self, hparams, current_epoch_func):
         """
         hparams: refer to the arguments below in add_augmentation_specific_args
         current_epoch_fn: this function has to return the current epoch as an integer 
         and is used to schedule the augmentation probability.
         """
-        self.current_epoch = current_epoch
+        self.current_epoch_func = current_epoch_func
         self.hparams = hparams
         self.aug_on = hparams.aug_on
         if self.aug_on:
@@ -256,15 +256,13 @@ class DataAugmentor:
                     im = complex_crop_if_needed(im, self.max_train_resolution)
                     kspace = fft2c(im)
             target=None
-            print('augment 안 됨.')
 
         return kspace, target
         
     def schedule_p(self):
         D = self.hparams.aug_delay
         T = self.hparams.num_epochs
-        t = self.current_epoch + 1 #current_epoch이 0부터 시작해서 1 더해줌.
-        #print(f"D:{D}, T:{T}, t:{t}")
+        t = self.current_epoch_func()
         p_max = self.hparams.aug_strength
 
         if t < D:
@@ -277,7 +275,6 @@ class DataAugmentor:
             elif self.hparams.aug_schedule == 'exp':
                 c = self.hparams.aug_exp_decay/(T-D) # Decay coefficient
                 p = p_max/(1-exp(-(T-D)*c))*(1-exp(-(t-D)*c))
-                #print(f"p:{p}")
             return p
 
         

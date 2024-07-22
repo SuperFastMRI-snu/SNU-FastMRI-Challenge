@@ -29,7 +29,7 @@ def train_epoch(args, epoch, start_itr, model, data_loader, optimizer, LRschedul
         # start_itr부터 iter 돌려서 학습
         if iter < start_itr:
             continue
-
+        
         mask, kspace, target, maximum, _, _ = data
         mask = mask.cuda(non_blocking=True)
         kspace = kspace.cuda(non_blocking=True)
@@ -205,8 +205,16 @@ def train(args):
     # data augmentation
     # -----------------
     # initialize data augmentation pipeline
-    augmentor = DataAugmentor(args, args.current_epoch)# args에 current_epoch 변수 추가함. 그걸 활용할 것.
+    current_epoch = start_epoch
+    current_epoch_func = lambda: current_epoch
+    augmentor = DataAugmentor(args, current_epoch_func)
     # ------------------
+
+    """
+    current_epoch = 0
+    current_epoch = start_epoch
+    augmentor = DataAugmentor(a)
+    """
 
     
     train_loader = create_data_loaders(data_path = args.data_path_train, args = args, DataAugmentor = augmentor ,shuffle=True) #여기에 dataaugmentor를 argument 로 넣어줘야 함.
@@ -216,7 +224,9 @@ def train(args):
     for epoch in range(start_epoch, args.num_epochs):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
         
-        args.current_epoch = epoch
+        # current_epoch 업데이트
+        current_epoch = epoch
+
         train_loss, train_time = train_epoch(args, epoch, start_itr, model, train_loader, optimizer, LRscheduler, best_val_loss, loss_type)
 
         # train_loss를 바탕으로 LRscheduler step 진행, lr조정
