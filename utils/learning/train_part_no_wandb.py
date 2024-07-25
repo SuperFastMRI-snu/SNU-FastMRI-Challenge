@@ -354,7 +354,7 @@ def download_model(url, fname):
         
 def train():
     # wandb run 하나 시작
-    wandb.init(project = "varnet-sweep-test")
+    # wandb.init(project = "varnet-sweep-test")
   
     args = parse()
 
@@ -378,11 +378,11 @@ def train():
 
     # If called by wandb.agent, as below,
     # this config will be set by Sweep Controller
-    pprint.pprint(wandb.config) # cascade, chans, sens_chans 조합 출력
+    # pprint.pprint(wandb.config) # cascade, chans, sens_chans 조합 출력
 
-    model = VarNet(num_cascades=wandb.config.cascade, 
-                   chans=wandb.config.chans, 
-                   sens_chans=wandb.config.sens_chans)
+    model = VarNet(num_cascades=args.cascade, 
+                   chans=args.chans, 
+                   sens_chans=args.sens_chans)
     model.to(device=device)
 
     """
@@ -422,7 +422,7 @@ def train():
       pretrained = torch.load(MODEL_FNAMES)
       pretrained_copy = copy.deepcopy(pretrained['model'])
       for layer in pretrained_copy.keys():
-        if layer.split('.',2)[1].isdigit() and (wandb.config.cascade <= int(layer.split('.',2)[1]) <=11):
+        if layer.split('.',2)[1].isdigit() and (args.cascade <= int(layer.split('.',2)[1]) <=11):
             del pretrained['model'][layer]
       
       model.load_state_dict(pretrained['model'])
@@ -490,7 +490,7 @@ def train():
             )
         
         # wandb에 log
-        wandb.log({"train_loss": train_loss, "valid_loss": val_loss})
+        # wandb.log({"train_loss": train_loss, "valid_loss": val_loss})
 
         """
         #스케줄러 조기종료 코드 - bad_epoch 분기점 지난 후에의 추이를 보기 위해 주석처리
