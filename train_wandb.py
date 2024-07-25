@@ -3,10 +3,11 @@ import argparse
 import shutil
 import os, sys
 from pathlib import Path
+import wandb
 
 if os.getcwd() + '/utils/model/' not in sys.path:
     sys.path.insert(1, os.getcwd() + '/utils/model/')
-from utils.learning.train_part_no_wandb import train
+from utils.learning.train_part_wandb import train
 
 if os.getcwd() + '/utils/common/' not in sys.path:
     sys.path.insert(1, os.getcwd() + '/utils/common/')
@@ -24,7 +25,6 @@ def parse():
     parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
     parser.add_argument('-r', '--report-interval', type=int, default=20, help='Report interval')
     parser.add_argument('-i', '--save-itr-interval', type=int, default=100, help='itr interval of model save')
-    parser.add_argument('-n', '--net-name', type=Path, default='test_varnet', help='Name of network')
     parser.add_argument('-t', '--data-path-train', type=Path, default='/content/train/', help='Directory of train data')
     parser.add_argument('-v', '--data-path-val', type=Path, default='/content/val/', help='Directory of validation data')
     
@@ -92,6 +92,7 @@ def add_augmentation_specific_args(parser):
     parser.add_argument("--center_fractions", nargs="+", default=[0.04], type=float, help="Number of center lines to use in mask",)
     return parser
 
+
 if __name__ == '__main__':
     args = parse()
 
@@ -99,12 +100,44 @@ if __name__ == '__main__':
     if args.seed is not None:
         seed_fix(args.seed)
 
-    args.exp_dir = '../result' / args.net_name / 'checkpoints'
-    args.val_dir = '../result' / args.net_name / 'reconstructions_val'
-    args.main_dir = '../result' / args.net_name / __file__
-    args.val_loss_dir = '../result' / args.net_name
+    # wandb sweep setting
+    sweep_config = {'method': 'random'}
+    sweep_config['metric'] = {'name': 'loss', 'goal': 'minimize'}
 
-    args.exp_dir.mkdir(parents=True, exist_ok=True)
-    args.val_dir.mkdir(parents=True, exist_ok=True)
+    parameters_dict = {
+      'cascade': {
+          'values': [6]
+          },
+      'chans': {
+          'values': [9, 10, 11, 12]
+          },
+      'sens_chans': {
+            'values': [4, 5, 6]
+          },
+    }
+    sweep_config['parameters'] = parameters_dict
 
-    train(args)
+    sweep_id = wandb.sweep(sweep_config, project="varnet-sweep-test")
+
+    def train_using_wandb():
+        # wandb run 하나 시작
+        wandb.init(project = "varnet-sweep-test")
+        args.net_name = Path(str(wandb.config.cascade) +","+str(wandb.config.chans)+","+str(wandb.config.sens_chans))
+
+        args.exp_dir = '../result' / args.net_name / 'checkpoints'
+        args.val_dir = '../result' / args.net_name / 'reconstructions_val'
+        args.main_dir = '../result' / args.net_name / __file__
+        args.val_loss_dir = '../result' / args.net_name
+
+        args.exp_dir.mkdir(parents=True, exist_ok=True)
+        args.val_dir.mkdir(parents=True, exist_ok=True)
+
+        # LRscheduler에 관한 hyperparameter wandb의 config에 저장
+        wandb.config.LRscheduler_patience = args.lr_scheduler_patience
+        wandb.config.LRscheduler_factor = args.lr_scheduler_factor
+        wandb.config.LRscheduler_mode = 'min'
+
+        train(args)
+
+    # wandb sweep
+    wandb.agent(sweep_id, train_using_wandb, count=5)

@@ -1,4 +1,4 @@
-python train.py \
+python train_no_wandb.py \
   -b 1 \
   -a 4 \
   -e 20 \
@@ -7,7 +7,7 @@ python train.py \
   -f 0.2 \
   -r 50 \
   -i 200 \
-  -n 'test_varnet10_2' \
+  -n 'test_TMAttVarNet1' \
   -t '/content/train/' \
   -v '/content/val/' \
   --cascade 3 \
