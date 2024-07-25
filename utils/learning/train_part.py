@@ -12,7 +12,14 @@ from collections import defaultdict
 from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss
 from utils.common.loss_function import SSIMLoss
+
+# Attention Hybrid VarNet
 from utils.model.hybrid_varnet import HybridVarNet
+
+# Attention VarNet (no UNet for refinement)
+from utils.model.att_varnet import VarNet
+
+
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
@@ -166,7 +173,7 @@ def train(args):
     torch.cuda.set_device(device)
     print('Current cuda device: ', torch.cuda.current_device())
 
-    model = HybridVarNet(num_cascades=args.cascade, 
+    model = VarNet(num_cascades=args.cascade, 
                    chans=args.chans, 
                    sens_chans=args.sens_chans)
     model.to(device=device)

@@ -7,9 +7,9 @@ python train.py \
   -f 0.2 \
   -r 50 \
   -i 200 \
-  -n 'test_varnet4' \
-  -t '/content/drive/MyDrive/Data/train/' \
-  -v '/content/drive/MyDrive/Data/val/' \
+  -n 'test_varnet9_2' \
+  -t '/content/train/' \
+  -v '/content/val/' \
   --cascade 6 \
   --chans 12 \
   --sens_chans 5 \

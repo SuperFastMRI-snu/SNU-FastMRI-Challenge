@@ -8,8 +8,8 @@ python train.py \
   -r 50 \
   -i 200 \
   -n 'test_varnet8' \
-  -t '/content/drive/MyDrive/Data/train/' \
-  -v '/content/drive/MyDrive/Data/val/' \
+  -t '/content/train/' \
+  -v '/content/val/' \
   --cascade 5 \
   --chans 12 \
   --sens_chans 5 \
