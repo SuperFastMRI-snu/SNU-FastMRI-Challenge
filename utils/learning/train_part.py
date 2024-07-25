@@ -12,7 +12,13 @@ from collections import defaultdict
 from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss
 from utils.common.loss_function import SSIMLoss
-from utils.model.varnet import VarNet
+
+# FIVarNet with channel&spatial-wise attention in UNet
+# FIVarNet with channel&spatial-wise attention in UNet / without block attention
+# FIVarNet with channel&spatial-wise attention in UNet / instead of block attention
+from utils.model.tm_att_fi_varnet import TM_Att_FIVarNet, TM_Att_FI_VarNet_n_b, TM_Att_FIVarNet_cs_n_b
+
+
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
@@ -28,13 +34,17 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
         for iter, data in enumerate(data_loader):
             if iter < start_itr:
                 continue
-            mask, kspace, target, maximum, _, _ = data
+            mask, kspace, target, maximum, fname, _ = data
             mask = mask.cuda(non_blocking=True)
             kspace = kspace.cuda(non_blocking=True)
             target = target.cuda(non_blocking=True)
             maximum = maximum.cuda(non_blocking=True)
 
-            output = model(kspace, mask)
+            # 파일이름에서 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
+            # FIVarNet_acc_fit model에만 사용
+            acceleration = int(str(fname)[11: str(fname).rfind('_')])
+
+            output = model(kspace, mask, acceleration)
             loss = loss_type(output, target, maximum)
 
             # gradient accumulation을 위해 acc_steps로 나누어서 back prop후 optimizer 사용
@@ -77,7 +87,12 @@ def validate(args, model, data_loader):
             mask, kspace, target, _, fnames, slices = data
             kspace = kspace.cuda(non_blocking=True)
             mask = mask.cuda(non_blocking=True)
-            output = model(kspace, mask)
+
+            # 파일이름에서 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
+            # FIVarNet_acc_fit model에만 사용
+            acceleration = int(str(fnames)[11: str(fnames).rfind('_')])
+
+            output = model(kspace, mask, acceleration)
 
             for i in range(output.shape[0]):
                 reconstructions[fnames[i]][int(slices[i])] = output[i].cpu().numpy()
@@ -165,7 +180,7 @@ def train(args):
     torch.cuda.set_device(device)
     print('Current cuda device: ', torch.cuda.current_device())
 
-    model = VarNet(num_cascades=args.cascade, 
+    model = TM_Att_FIVarNet_cs_n_b(num_cascades=args.cascade, 
                    chans=args.chans, 
                    sens_chans=args.sens_chans)
     model.to(device=device)
@@ -212,6 +227,7 @@ def train(args):
 
       sum_loss = pretrained['sum_loss']
       best_val_loss = pretrained['best_val_loss']
+
       start_epoch = pretrained['epoch']
       start_itr = pretrained['itr']
     

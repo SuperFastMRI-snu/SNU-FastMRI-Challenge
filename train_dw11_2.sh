@@ -1,16 +1,16 @@
 python train.py \
   -b 1 \
   -a 4 \
-  -e 15 \
+  -e 20 \
   -l 0.001 \
   -p 2 \
   -f 0.2 \
   -r 50 \
   -i 200 \
-  -n 'test_varnet4' \
-  -t '/content/drive/MyDrive/Data/train/' \
-  -v '/content/drive/MyDrive/Data/val/' \
-  --cascade 6 \
+  -n 'test_varnet11_2' \
+  -t '/content/train/' \
+  -v '/content/val/' \
+  --cascade 3 \
   --chans 12 \
   --sens_chans 5 \
   --input-key 'kspace' \
