@@ -1,0 +1,125 @@
+{
+    "os": "Linux-6.1.85+-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2024-07-25T12:55:18.146182",
+    "startedAt": "2024-07-25T12:55:14.710291",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "-b",
+        "1",
+        "-a",
+        "4",
+        "-e",
+        "20",
+        "-l",
+        "0.001",
+        "-p",
+        "2",
+        "-f",
+        "0.2",
+        "-r",
+        "50",
+        "-i",
+        "200",
+        "-n",
+        "test_varnet10_2",
+        "-t",
+        "/content/train/",
+        "-v",
+        "/content/val/",
+        "--cascade",
+        "3",
+        "--chans",
+        "12",
+        "--sens_chans",
+        "5",
+        "--input-key",
+        "kspace",
+        "--target-key",
+        "image_label",
+        "--max-key",
+        "max",
+        "--seed",
+        "430"
+    ],
+    "state": "running",
+    "program": "/content/drive/MyDrive/fastMRI_main_TMAttFIVarNet/FastMRI_challenge/train.py",
+    "codePathLocal": "train.py",
+    "codePath": "train.py",
+    "git": {
+        "remote": "https://superfastmri:@github.com/superfastmri/fastMRI_main.git",
+        "commit": "5fbf85f9212cb5d8330a4d28ab0a9fd2c2c06029"
+    },
+    "email": null,
+    "root": "/content/drive/MyDrive/fastMRI_main_TMAttFIVarNet/FastMRI_challenge",
+    "host": "69fb8f076ba6",
+    "username": "root",
+    "executable": "/usr/bin/python3",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 2000.1460000000002,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2000.146,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 201.22513961791992,
+            "used": 142.29035568237305
+        }
+    },
+    "gpu": "Tesla T4",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Tesla T4",
+            "memory_total": 16106127360
+        }
+    ],
+    "memory": {
+        "total": 50.9936408996582
+    }
+}

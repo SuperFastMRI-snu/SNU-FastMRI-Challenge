@@ -1,0 +1,8 @@
+wandb_version: 1
+
+cascade:
+  value: 12
+chans:
+  value: 9
+sens_chans:
+  value: 5
