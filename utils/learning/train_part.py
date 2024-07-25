@@ -8,15 +8,80 @@ from tqdm import tqdm
 from pathlib import Path
 import copy
 
+#memory check
+# import logging
+# import socket
+# from datetime import datetime, timedelta
+
+
 from collections import defaultdict
 from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss
 from utils.common.loss_function import SSIMLoss
+
+# FIVarNet with acc=4 in block attention
+from utils.model.feature_varnet import FIVarNet
+
+# FIVarNet without block attention
+from utils.model.feature_varnet2 import FIVarNet_n_att
+
+# FIVarNet with fitted acc in block attention
 from utils.model.feature_varnet3 import FIVarNet_acc_fit
+
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import os
+
+#memory check
+# logging.basicConfig(
+#    format="%(levelname)s:%(asctime)s %(message)s",
+#    level=logging.INFO,
+#    datefmt="%Y-%m-%d %H:%M:%S",
+# )
+# logger: logging.Logger = logging.getLogger(__name__)
+# logger.setLevel(level=logging.INFO)
+
+# TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
+
+# # Keep a max of 100,000 alloc/free events in the recorded history
+# # leading up to the snapshot.
+# MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT: int = 10000000
+
+# def start_record_memory_history() -> None:
+#    if not torch.cuda.is_available():
+#        logger.info("CUDA unavailable. Not recording memory history")
+#        return
+
+#    logger.info("Starting snapshot record_memory_history")
+#    torch.cuda.memory._record_memory_history(
+#        max_entries=MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT
+#    )
+
+# def stop_record_memory_history() -> None:
+#    if not torch.cuda.is_available():
+#        logger.info("CUDA unavailable. Not recording memory history")
+#        return
+
+#    logger.info("Stopping snapshot record_memory_history")
+#    torch.cuda.memory._record_memory_history(enabled=None)
+
+# def export_memory_snapshot() -> None:
+#    if not torch.cuda.is_available():
+#        logger.info("CUDA unavailable. Not exporting memory snapshot")
+#        return
+
+#    # Prefix for file names.
+#    host_name = socket.gethostname()
+#    timestamp = datetime.now().strftime(TIME_FORMAT_STR)
+#    file_prefix = f"{host_name}_{timestamp}"
+
+#    try:
+#        logger.info(f"Saving snapshot to local file: {file_prefix}.pickle")
+#        torch.cuda.memory._dump_snapshot(f"{file_prefix}.pickle")
+#    except Exception as e:
+#        logger.error(f"Failed to capture memory snapshot {e}")
+#        return
 
 def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer, LRscheduler, sum_loss, best_val_loss, loss_type):
     model.train()
@@ -38,12 +103,12 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             # 파일이름에서 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
             # FIVarNet_acc_fit model에만 사용
             acceleration = int(str(fname)[11: str(fname).rfind('_')])
+
             output = model(kspace, mask, acceleration)
-
             loss = loss_type(output, target, maximum)
-
             # gradient accumulation을 위해 acc_steps로 나누어서 back prop후 optimizer 사용
             loss /= acc_steps
+
             loss.backward()
 
             if ((iter + 1) % acc_steps == 0) or (iter + 1 == len_loader):
@@ -67,6 +132,12 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             if iter % args.save_itr_interval == 0:
                 save_model(args, args.exp_dir, epoch, iter+1, model, optimizer, LRscheduler, total_loss, best_val_loss, False)
 
+            # if (epoch==11) and (iter%10==0) and (iter>=10) and (iter<=50):
+            #     # Create the memory snapshot file
+            #     export_memory_snapshot()
+            # elif iter >= 51:
+            #     # Stop recording memory snapshot history
+            #     stop_record_memory_history()
     total_loss = total_loss / len_loader
     return total_loss, time.perf_counter() - start_epoch, len_loader
 
@@ -174,7 +245,7 @@ def train(args):
     torch.cuda.set_device(device)
     print('Current cuda device: ', torch.cuda.current_device())
 
-    model = FIVarNet_acc_fit(num_cascades=args.cascade, 
+    model = FIVarNet(num_cascades=args.cascade, 
                    chans=args.chans, 
                    sens_chans=args.sens_chans)
     model.to(device=device)
@@ -224,13 +295,14 @@ def train(args):
       start_epoch = pretrained['epoch']
       start_itr = pretrained['itr']
     
-    loss_type = SSIMLoss().to(device=device)
-
-    
     train_loader = create_data_loaders(data_path = args.data_path_train, args = args, shuffle=True)
     val_loader = create_data_loaders(data_path = args.data_path_val, args = args)
     
     val_loss_log = np.empty((0, 2))
+
+    # Start recording memory snapshot history
+    # start_record_memory_history()
+
     for epoch in range(start_epoch, args.num_epochs):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
         
@@ -243,7 +315,7 @@ def train(args):
         sum_loss = 0 
         
         val_loss, num_subjects, reconstructions, targets, inputs, val_time = validate(args, model, val_loader)
-        
+
         val_loss_log = np.append(val_loss_log, np.array([[epoch, val_loss]]), axis=0)
         file_path = os.path.join(args.val_loss_dir, "val_loss_log")
         np.save(file_path, val_loss_log)
@@ -291,3 +363,4 @@ def train(args):
           print(f'Early stopping at epoch {epoch}...')
           break
         """
+        
