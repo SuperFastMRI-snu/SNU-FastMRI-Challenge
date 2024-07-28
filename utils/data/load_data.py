@@ -133,12 +133,13 @@ class SliceData(Dataset):
             input = torch.from_numpy(input)
             input = torch.stack((input.real, input.imag), dim=-1)
 
-            # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기
+            # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기 / random mask를 위한 p 설정
+            p = 0
             if self.DataAugmentor != None:
-              input, target = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
+              input, target, p = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
 
             # random mask 항상 적용. Test 때는 적용 x
-            mask = self.mask_list[(self.random_acc(acc), input.shape[-2])]
+            mask = self.mask_list[(self.random_acc(acc, p), input.shape[-2])]
 
             if self.forward:
                 target = -1
@@ -151,12 +152,15 @@ class SliceData(Dataset):
         
         return self.transform(mask, input, target, attrs, kspace_fname.name, dataslice)
     
-    def random_acc(self, acc):
+    def random_acc(self, acc, p):
         if self.forward:
           return acc
-        acc_list = [4, 5, 6, 7, 8, 9]
-        random_acc = random.choice(acc_list)
-        return random_acc
+        if random.uniform(0, 1) < p:
+          acc_list = [4, 5, 6, 7, 8, 9]
+          random_acc = random.choice(acc_list)
+          return random_acc
+        else:
+          return acc
 
 
 def create_data_loaders(data_path, args, DataAugmentor=None, shuffle=False, isforward=False):

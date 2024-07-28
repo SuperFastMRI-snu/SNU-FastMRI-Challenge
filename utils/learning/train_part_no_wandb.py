@@ -15,9 +15,7 @@ from utils.common.utils import save_reconstructions, ssim_loss, seed_fix
 from utils.common.loss_function import SSIMLoss
 
 # FIVarNet with channel&spatial-wise attention in UNet
-# FIVarNet with channel&spatial-wise attention in UNet / without block attention
-# FIVarNet with channel&spatial-wise attention in UNet / instead of block attention
-from utils.model.tm_att_fi_varnet import TM_Att_FIVarNet, TM_Att_FIVarNet_n_b, TM_Att_FIVarNet_cs_n_b
+from utils.model.tm_att_fi_varnet import TM_Att_FIVarNet
 
 
 from utils.mraugment.data_augment import DataAugmentor

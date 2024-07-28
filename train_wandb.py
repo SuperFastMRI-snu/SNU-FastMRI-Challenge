@@ -19,7 +19,7 @@ def parse():
     parser.add_argument('-g', '--GPU-NUM', type=int, default=0, help='GPU number to allocate')
     parser.add_argument('-b', '--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('-a', '--acc-steps', type=int, default=4, help='Steps of Gradient Accumulation')
-    parser.add_argument('-e', '--num-epochs', type=int, default=10, help='Number of epochs')
+    parser.add_argument('-e', '--num-epochs', type=int, default=15, help='Number of epochs')
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=10, help='patience of ReduceLROnPlateau')
     parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
@@ -28,9 +28,6 @@ def parse():
     parser.add_argument('-t', '--data-path-train', type=Path, default='/content/train/', help='Directory of train data')
     parser.add_argument('-v', '--data-path-val', type=Path, default='/content/val/', help='Directory of validation data')
     
-    parser.add_argument('--cascade', type=int, default=1, help='Number of cascades | Should be less than 12') ## important hyperparameter
-    parser.add_argument('--chans', type=int, default=9, help='Number of channels for cascade U-Net | 18 in original varnet') ## important hyperparameter
-    parser.add_argument('--sens_chans', type=int, default=4, help='Number of channels for sensitivity map U-Net | 8 in original varnet') ## important hyperparameter
     parser.add_argument('--input-key', type=str, default='kspace', help='Name of input key')
     parser.add_argument('--target-key', type=str, default='image_label', help='Name of target key')
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')
@@ -101,12 +98,12 @@ if __name__ == '__main__':
         seed_fix(args.seed)
 
     # wandb sweep setting
-    sweep_config = {'method': 'random'}
+    sweep_config = {'method': 'grid'}
     sweep_config['metric'] = {'name': 'loss', 'goal': 'minimize'}
 
     parameters_dict = {
       'cascade': {
-          'values': [6]
+          'values': [3]
           },
       'chans': {
           'values': [9, 10, 11, 12]
@@ -117,11 +114,11 @@ if __name__ == '__main__':
     }
     sweep_config['parameters'] = parameters_dict
 
-    sweep_id = wandb.sweep(sweep_config, project="varnet-sweep-test")
+    sweep_id = wandb.sweep(sweep_config, project="TMAttFIVarNet-test2")
 
     def train_using_wandb():
         # wandb run 하나 시작
-        wandb.init(project = "varnet-sweep-test")
+        wandb.init(project = "TMAttFIVarNet-test2")
         args.net_name = Path(str(wandb.config.cascade) +","+str(wandb.config.chans)+","+str(wandb.config.sens_chans))
 
         args.exp_dir = '../result' / args.net_name / 'checkpoints'
@@ -140,4 +137,4 @@ if __name__ == '__main__':
         train(args)
 
     # wandb sweep
-    wandb.agent(sweep_id, train_using_wandb, count=5)
+    wandb.agent(sweep_id, train_using_wandb, count=12)
