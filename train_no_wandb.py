@@ -18,11 +18,11 @@ def parse():
     parser.add_argument('-g', '--GPU-NUM', type=int, default=0, help='GPU number to allocate')
     parser.add_argument('-b', '--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('-a', '--acc-steps', type=int, default=4, help='Steps of Gradient Accumulation')
-    parser.add_argument('-e', '--num-epochs', type=int, default=10, help='Number of epochs')
+    parser.add_argument('-e', '--num-epochs', type=int, default=15, help='Number of epochs')
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=10, help='patience of ReduceLROnPlateau')
+    parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=5, help='patience of ReduceLROnPlateau')
     parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
-    parser.add_argument('-r', '--report-interval', type=int, default=20, help='Report interval')
+    parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
     parser.add_argument('-i', '--save-itr-interval', type=int, default=100, help='itr interval of model save')
     parser.add_argument('-n', '--net-name', type=Path, default='test_varnet', help='Name of network')
     parser.add_argument('-t', '--data-path-train', type=Path, default='/content/train/', help='Directory of train data')
@@ -47,7 +47,7 @@ def add_augmentation_specific_args(parser):
     # Related to augmentation strenght scheduling
     # --------------------------------------------
     parser.add_argument('--aug_schedule', type=str, default='exp', help='Type of data augmentation strength scheduling. Options: constant, ramp, exp')
-    parser.add_argument('--aug_delay', type=int, default=0,help='Number of epochs at the beginning of training without data augmentation. The schedule in --aug_schedule will be adjusted so that at the last epoch the augmentation strength is --aug_strength.')
+    parser.add_argument('--aug_delay', type=int, default=10,help='Number of epochs at the beginning of training without data augmentation. The schedule in --aug_schedule will be adjusted so that at the last epoch the augmentation strength is --aug_strength.')
     parser.add_argument('--aug_strength', type=float, default=0.55, help='Augmentation strength, combined with --aug_schedule determines the augmentation strength in each epoch')
     parser.add_argument('--aug_exp_decay', type=float, default=5.0, help='Exponential decay coefficient if --aug_schedule is set to exp. 1.0 is close to linear, 10.0 is close to step function')
     
@@ -89,7 +89,7 @@ def add_augmentation_specific_args(parser):
     # Additional arguments for mask making 
     #---------------------------------------------------
     parser.add_argument("--mask_type", choices=("random", "equispaced"), default="equispaced", type=str, help="Type of k-space mask",)
-    parser.add_argument("--center_fractions", nargs="+", default=[0.04], type=float, help="Number of center lines to use in mask",)
+    parser.add_argument("--center_fractions", nargs="+", default=[0.08], type=float, help="Number of center lines to use in mask",)
     return parser
 
 if __name__ == '__main__':

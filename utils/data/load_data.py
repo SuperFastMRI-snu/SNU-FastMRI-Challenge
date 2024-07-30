@@ -19,9 +19,9 @@ class SliceData(Dataset):
         self.forward = forward
         self.image_examples = []
         self.kspace_examples = []
-        # MRAugment를 위해 아래 변수들 추가함
+        # For MRAugment
         self.DataAugmentor = DataAugmentor
-        
+        # For random mask
         self.mask_type = args.mask_type
         self.center_fractions = args.center_fractions
 
@@ -112,7 +112,6 @@ class SliceData(Dataset):
         return len(self.kspace_examples)
 
     def __getitem__(self, i):
-        # image_aug 와 kspace_aug는 augmentation이 필요한지의 여부
         if not self.forward:
             image_fname, _ = self.image_examples[i]
         kspace_fname, dataslice = self.kspace_examples[i]
@@ -139,7 +138,11 @@ class SliceData(Dataset):
               input, target, p = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
 
             # random mask 항상 적용. Test 때는 적용 x
-            mask = self.mask_list[(self.random_acc(acc, p), input.shape[-2])]
+            random_acc = self.random_acc(acc, p)
+            if random_acc == acc:
+              mask =  np.array(hf["mask"])
+            else:
+              mask = self.mask_list[(random_acc, input.shape[-2])]
 
             if self.forward:
                 target = -1
