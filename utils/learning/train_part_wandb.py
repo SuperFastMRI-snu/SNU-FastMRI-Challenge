@@ -53,6 +53,14 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             loss.backward()
 
             if ((iter + 1) % acc_steps == 0) or (iter + 1 == len_loader):
+                nn.utils.clip_grad_norm_(model.parameters(), args.max_norm)
+                # if iter<50:
+                #     total_norm = 0
+                #     for p in model.parameters():
+                #         param_norm = p.grad.data.norm(2)
+                #         total_norm += param_norm.item() ** 2
+                #     total_norm = total_norm ** (1. / 2)
+                #     print(total_norm)
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -187,7 +195,7 @@ def train(args):
 
     model = TM_Att_FIVarNet(num_cascades=wandb.config.cascade, 
                    chans=wandb.config.chans, 
-                   sens_chans=wandb.config.sens_chans)
+                   sens_chans=wandb.config.sens_chans,)
 
     model.to(device=device)
 
@@ -203,23 +211,23 @@ def train(args):
     start_itr = 0
 
     # train중이던 model을 사용할 경우
-    MODEL_FNAMES = args.exp_dir / 'model.pt'
-    if Path(MODEL_FNAMES).exists():
-      pretrained = torch.load(MODEL_FNAMES)
-      pretrained_copy = copy.deepcopy(pretrained['model'])
-      for layer in pretrained_copy.keys():
-        if layer.split('.',2)[1].isdigit() and (wandb.config.cascade <= int(layer.split('.',2)[1]) <=11):
-            del pretrained['model'][layer]
+    # MODEL_FNAMES = args.exp_dir / 'model.pt'
+    # if Path(MODEL_FNAMES).exists():
+    #   pretrained = torch.load(MODEL_FNAMES)
+    #   pretrained_copy = copy.deepcopy(pretrained['model'])
+    #   for layer in pretrained_copy.keys():
+    #     if layer.split('.',2)[1].isdigit() and (wandb.config.cascade <= int(layer.split('.',2)[1]) <=11):
+    #         del pretrained['model'][layer]
       
-      model.load_state_dict(pretrained['model'])
-      optimizer.load_state_dict(pretrained['optimizer'])
-      LRscheduler.load_state_dict(pretrained['LRscheduler'])
+    #   model.load_state_dict(pretrained['model'])
+    #   optimizer.load_state_dict(pretrained['optimizer'])
+    #   LRscheduler.load_state_dict(pretrained['LRscheduler'])
 
-      sum_loss = pretrained['sum_loss']
-      best_val_loss = pretrained['best_val_loss']
+    #   sum_loss = pretrained['sum_loss']
+    #   best_val_loss = pretrained['best_val_loss']
 
-      start_epoch = pretrained['epoch']
-      start_itr = pretrained['itr']
+    #   start_epoch = pretrained['epoch']
+    #   start_itr = pretrained['itr']
     
     loss_type = SSIMLoss().to(device=device)
 

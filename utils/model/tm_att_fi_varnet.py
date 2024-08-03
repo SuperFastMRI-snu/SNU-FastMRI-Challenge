@@ -857,6 +857,7 @@ class TM_Att_FIVarNet(nn.Module):
         mask_center: bool = True,
         image_conv_cascades: Optional[List[int]] = None,
         kspace_mult_factor: float = 1e6,
+        drop_prob: float = 0.0,
         use_attention: bool = True,
         use_res: bool = True,
     ):
@@ -884,7 +885,7 @@ class TM_Att_FIVarNet(nn.Module):
                     decoder=self.decoder,
                     feature_processor=Unet2d(
                         in_chans=chans, out_chans=chans, chans=chans, num_pool_layers=pools,
-                        use_attention=use_attention, use_res=use_res,
+                        drop_prob=drop_prob, use_attention=use_attention, use_res=use_res,
                     ),
                     attention_layer=AttentionPE(in_chans=chans),
                     use_extra_feature_conv=use_image_conv,
@@ -892,7 +893,7 @@ class TM_Att_FIVarNet(nn.Module):
             )
 
         self.image_cascades = nn.ModuleList(
-            [VarNetBlock(NormUnet(chans, pools, use_attention=use_attention, use_res=use_res)) for _ in range(num_cascades)]
+            [VarNetBlock(NormUnet(chans, pools, drop_prob=drop_prob, use_attention=use_attention, use_res=use_res)) for _ in range(num_cascades)]
         )
 
         self.decode_norm = nn.InstanceNorm2d(chans)

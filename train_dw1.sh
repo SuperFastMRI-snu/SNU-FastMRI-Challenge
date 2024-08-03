@@ -5,6 +5,7 @@ python train_no_wandb.py \
   -l 0.001 \
   -p 2 \
   -f 0.2 \
+  -m 1.0 \
   -r 50 \
   -i 200 \
   -n 'test_TMAttVarNet1' \
@@ -13,6 +14,7 @@ python train_no_wandb.py \
   --cascade 3 \
   --chans 12 \
   --sens_chans 5 \
+  --drop_prob 0.0 \
   --input-key 'kspace' \
   --target-key 'image_label' \
   --max-key 'max' \

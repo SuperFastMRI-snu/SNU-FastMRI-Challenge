@@ -22,6 +22,7 @@ def parse():
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=5, help='patience of ReduceLROnPlateau')
     parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
+    parser.add_argument('-m', '--max-norm', type=float, default=0.2, help='max_norm of gradient clipping')
     parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
     parser.add_argument('-i', '--save-itr-interval', type=int, default=100, help='itr interval of model save')
     parser.add_argument('-n', '--net-name', type=Path, default='test_varnet', help='Name of network')
@@ -31,6 +32,7 @@ def parse():
     parser.add_argument('--cascade', type=int, default=1, help='Number of cascades | Should be less than 12') ## important hyperparameter
     parser.add_argument('--chans', type=int, default=9, help='Number of channels for cascade U-Net | 18 in original varnet') ## important hyperparameter
     parser.add_argument('--sens_chans', type=int, default=4, help='Number of channels for sensitivity map U-Net | 8 in original varnet') ## important hyperparameter
+    parser.add_argument('--drop_prob', type=float, default=0.0, help='Drop probability of U-Nets except sensitivity map U-Net')
     parser.add_argument('--input-key', type=str, default='kspace', help='Name of input key')
     parser.add_argument('--target-key', type=str, default='image_label', help='Name of target key')
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')

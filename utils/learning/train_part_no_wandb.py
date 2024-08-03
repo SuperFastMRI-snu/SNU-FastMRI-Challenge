@@ -52,6 +52,14 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             loss.backward()
 
             if ((iter + 1) % acc_steps == 0) or (iter + 1 == len_loader):
+                nn.utils.clip_grad_norm_(model.parameters(), args.max_norm)
+                if iter<50:
+                    total_norm = 0
+                    for p in model.parameters():
+                        param_norm = p.grad.data.norm(2)
+                        total_norm += param_norm.item() ** 2
+                    total_norm = total_norm ** (1. / 2)
+                    print(total_norm)
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -182,7 +190,8 @@ def train(args):
 
     model = TM_Att_FIVarNet(num_cascades=args.cascade, 
                    chans=args.chans, 
-                   sens_chans=args.sens_chans)
+                   sens_chans=args.sens_chans,
+                   drop_prob=args.drop_prob)
 
     model.to(device=device)
 

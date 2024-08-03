@@ -139,7 +139,7 @@ class SliceData(Dataset):
 
             # random mask 항상 적용. Test 때는 적용 x
             random_acc = self.random_acc(acc, p)
-            if random_acc == acc:
+            if random_acc == acc and input.shape[-2] != 768:
               mask =  np.array(hf["mask"])
             else:
               mask = self.mask_list[(random_acc, input.shape[-2])]
@@ -159,8 +159,9 @@ class SliceData(Dataset):
         if self.forward:
           return acc
         if random.uniform(0, 1) < p:
-          acc_list = [4, 5, 6, 7, 8, 9]
-          random_acc = random.choice(acc_list)
+          acc_list = [6, 7, 9]
+          weights = [0.25, 0.25, 0.5]
+          random_acc = random.choices(acc_list, weights = weights, k=1)[0]
           return random_acc
         else:
           return acc
