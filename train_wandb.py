@@ -32,7 +32,6 @@ def parse():
     parser.add_argument('--cascade', type=int, default=3, help='Number of cascades | Should be less than 12') ## important hyperparameter
     parser.add_argument('--chans', type=int, default=9, help='Number of channels for cascade U-Net | 18 in original varnet') ## important hyperparameter
     parser.add_argument('--sens_chans', type=int, default=4, help='Number of channels for sensitivity map U-Net | 8 in original varnet') ## important hyperparameter
-    parser.add_argument('--drop_prob', type=float, default=0.0, help='Drop probability of U-Nets except sensitivity map U-Net')
     parser.add_argument('--input-key', type=str, default='kspace', help='Name of input key')
     parser.add_argument('--target-key', type=str, default='image_label', help='Name of target key')
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')
@@ -49,7 +48,7 @@ def add_augmentation_specific_args(parser):
     # Related to augmentation strenght scheduling
     # --------------------------------------------
     parser.add_argument('--aug_schedule', type=str, default='exp', help='Type of data augmentation strength scheduling. Options: constant, ramp, exp')
-    parser.add_argument('--aug_delay', type=int, default=10,help='Number of epochs at the beginning of training without data augmentation. The schedule in --aug_schedule will be adjusted so that at the last epoch the augmentation strength is --aug_strength.')
+    parser.add_argument('--aug_delay', type=int, default=0,help='Number of epochs at the beginning of training without data augmentation. The schedule in --aug_schedule will be adjusted so that at the last epoch the augmentation strength is --aug_strength.')
     parser.add_argument('--aug_strength', type=float, default=0.55, help='Augmentation strength, combined with --aug_schedule determines the augmentation strength in each epoch')
     parser.add_argument('--aug_exp_decay', type=float, default=5.0, help='Exponential decay coefficient if --aug_schedule is set to exp. 1.0 is close to linear, 10.0 is close to step function')
     
@@ -120,11 +119,11 @@ if __name__ == '__main__':
 
     sweep_config['parameters'] = parameters_dict
 
-    sweep_id = wandb.sweep(sweep_config, project="TMAttFIVarNet-test4")
+    sweep_id = wandb.sweep(sweep_config, project="TMAttFIVarNet-test5")
 
     def train_using_wandb():
         # wandb run 하나 시작
-        wandb.init(project = "TMAttFIVarNet-test4")
+        wandb.init(project = "TMAttFIVarNet-test5")
         args.net_name = Path(str(wandb.config.cascade)+','+str(wandb.config.chans)+','+str(wandb.config.sens_chans))
 
         args.exp_dir = '../result' / args.net_name / 'checkpoints'
