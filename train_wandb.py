@@ -102,28 +102,28 @@ if __name__ == '__main__':
         seed_fix(args.seed)
 
     # wandb sweep setting
-    sweep_config = {'method': 'grid'}
+    sweep_config = {'method': 'random'}
     sweep_config['metric'] = {'name': 'loss', 'goal': 'minimize'}
 
     parameters_dict = {
       'cascade': {
-          'values': [3]
+          'values': [2, 3, 4]
           },
       'chans': {
-          'values': [9, 10]
+          'values': [8, 9, 10]
           },
       'sens_chans': {
-            'values': [7]
+            'values': [5, 6, 7, 8]
           },
     }
 
     sweep_config['parameters'] = parameters_dict
 
-    sweep_id = wandb.sweep(sweep_config, project="TMAttFIVarNet-test5")
+    sweep_id = wandb.sweep(sweep_config, project="TMAttFIVarNet-test6")
 
     def train_using_wandb():
         # wandb run 하나 시작
-        wandb.init(project = "TMAttFIVarNet-test5")
+        wandb.init(project = "TMAttFIVarNet-test6")
         args.net_name = Path(str(wandb.config.cascade)+','+str(wandb.config.chans)+','+str(wandb.config.sens_chans))
 
         args.exp_dir = '../result' / args.net_name / 'checkpoints'
