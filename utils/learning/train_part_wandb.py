@@ -43,7 +43,7 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
 
             # 직접 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
             # FIVarNet_acc_fit model에만 사용
-            acceleration = round(mask.size/mask.sum())
+            acceleration = round(mask.shape[-2]/int(mask.sum()))
 
             output = model(kspace, mask, acceleration)
             loss = loss_type(output, target, maximum)
@@ -90,9 +90,9 @@ def validate(args, model, data_loader):
             kspace = kspace.cuda(non_blocking=True)
             mask = mask.cuda(non_blocking=True)
 
-            # 파일이름에서 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
+            # 직접 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
             # FIVarNet_acc_fit model에만 사용
-            acceleration = int(str(fnames)[11: str(fnames).rfind('_')])
+            acceleration = round(mask.shape[-2]/int(mask.sum()))
 
             output = model(kspace, mask, acceleration)
 

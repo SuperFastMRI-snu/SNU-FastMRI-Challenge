@@ -14,7 +14,7 @@ def test(args, model, data_loader):
         for (mask, kspace, _, _, fnames, slices) in data_loader:
             kspace = kspace.cuda(non_blocking=True)
             mask = mask.cuda(non_blocking=True)
-            acceleration = round(mask.size/mask.sum())
+            acceleration = round(mask.shape[-2]/int(mask.sum()))
             output = model(kspace, mask,acceleration)
 
             for i in range(output.shape[0]):
