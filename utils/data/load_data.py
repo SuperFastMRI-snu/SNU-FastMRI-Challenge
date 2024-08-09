@@ -22,22 +22,24 @@ class SliceData(Dataset):
         # For MRAugment
         self.DataAugmentor = DataAugmentor
         # For random mask
-        self.mask_type = args.mask_type
-        self.center_fractions = args.center_fractions
+        if not forward:
+            self.mask_type = args.mask_type
+            self.center_fractions = args.center_fractions
 
-        # mask list 만들기
-        mask_acc = [4, 5, 6, 7, 8, 9]
-        mask_list = {}
+        if not forward:
+            # mask list 만들기
+            mask_acc = [9] # [4, 5, 6, 7, 8, 9]
+            mask_list = {}
 
-        # data에서 중요한 것은 [-2] 위치의 원소. mask 벡터의 크기가 바로 [-2] 원소이다.
-        data_list = [torch.randn(16, 768, 396, 2), torch.randn(16, 396, 768, 2), torch.randn(4, 768, 392, 2)]
-        for acc in mask_acc:
-          for data in data_list:
-            mask_func = create_mask_for_mask_type(self.mask_type, self.center_fractions, [acc])
-            _, mask = apply_mask(data, mask_func, None) # mask.shape = [1, 1, ?, 1]
-            mask = np.array(torch.squeeze(mask))
-            mask_list[(acc, data.shape[-2])] = mask # 마스크를 찾을 때에는 acc와 input의 열의 개수로 찾아야 함
-        self.mask_list = mask_list
+            # data에서 중요한 것은 [-2] 위치의 원소. mask 벡터의 크기가 바로 [-2] 원소이다.
+            data_list = [torch.randn(16, 768, 396, 2), torch.randn(16, 396, 768, 2), torch.randn(4, 768, 392, 2)]
+            for acc in mask_acc:
+              for data in data_list:
+                mask_func = create_mask_for_mask_type(self.mask_type, self.center_fractions, [acc])
+                _, mask = apply_mask(data, mask_func, None) # mask.shape = [1, 1, ?, 1]
+                mask = np.array(torch.squeeze(mask))
+                mask_list[(acc, data.shape[-2])] = mask # 마스크를 찾을 때에는 acc와 input의 열의 개수로 찾아야 함
+            self.mask_list = mask_list
 
         if not forward:
             image_files = list(Path(root / "image").iterdir())
@@ -116,9 +118,10 @@ class SliceData(Dataset):
             image_fname, _ = self.image_examples[i]
         kspace_fname, dataslice = self.kspace_examples[i]
         
-        # image_file을 열어서 target_size 가져오기
-        with h5py.File(image_fname, "r") as hf:
-            target_size = hf[self.target_key][dataslice].shape
+        if not self.forward:
+            # image_file을 열어서 target_size 가져오기
+            with h5py.File(image_fname, "r") as hf:
+                target_size = hf[self.target_key][dataslice].shape
 
         # kspace_fname에서 acc 정보 가져오기(mask 만들 때 사용)
         str_kspace_fname = str(kspace_fname)
@@ -156,13 +159,11 @@ class SliceData(Dataset):
         return self.transform(mask, input, target, attrs, kspace_fname.name, dataslice)
     
     def random_acc(self, acc, p):
-        if self.forward:
-          return acc
-        if random.uniform(0, 1) < p:
-          acc_list = [6, 7, 9]
-          weights = [0.25, 0.25, 0.5]
-          random_acc = random.choices(acc_list, weights = weights, k=1)[0]
-          return random_acc
+        if random.uniform(0, 1) < p*0.25/0.55:
+          # acc_list = [6, 7, 9]
+          # weights = [0.25, 0.25, 0.5]
+          # random_acc = random.choices(acc_list, weights = weights, k=1)[0]
+          return 9
         else:
           return acc
 

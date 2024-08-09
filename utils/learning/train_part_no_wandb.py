@@ -40,9 +40,9 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             target = target.cuda(non_blocking=True)
             maximum = maximum.cuda(non_blocking=True)
 
-            # 파일이름에서 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
+            # 직접 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
             # FIVarNet_acc_fit model에만 사용
-            acceleration = int(str(fname)[11: str(fname).rfind('_')])
+            acceleration = round(mask.size/mask.sum())
 
             output = model(kspace, mask, acceleration)
             loss = loss_type(output, target, maximum)

@@ -113,7 +113,7 @@ if __name__ == '__main__':
           'values': [8, 9, 10]
           },
       'sens_chans': {
-            'values': [5, 6, 7, 8]
+            'values': [4]
           },
     }
 
