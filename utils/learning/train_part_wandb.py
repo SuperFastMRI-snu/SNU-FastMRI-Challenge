@@ -184,7 +184,7 @@ def train(args):
 
     # If called by wandb.agent, as below,
     # this config will be set by Sweep Controller
-    pprint.pprint(wandb.config) # cascade, chans, sens_chans 조합 출력
+    pprint.pprint(wandb.config) # cascade, chans, sens_chans, unet_chans 조합 출력
 
     model = TM_Att_FIVarNet(num_cascades=wandb.config.cascade, 
                    chans=wandb.config.chans, 
