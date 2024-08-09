@@ -30,8 +30,9 @@ def parse():
     parser.add_argument('-v', '--data-path-val', type=Path, default='/content/val/', help='Directory of validation data')
     
     parser.add_argument('--cascade', type=int, default=3, help='Number of cascades | Should be less than 12') ## important hyperparameter
-    parser.add_argument('--chans', type=int, default=9, help='Number of channels for cascade U-Net | 18 in original varnet') ## important hyperparameter
+    parser.add_argument('--chans', type=int, default=9, help='Number of channels for feature-domain | 18 in original varnet') ## important hyperparameter
     parser.add_argument('--sens_chans', type=int, default=4, help='Number of channels for sensitivity map U-Net | 8 in original varnet') ## important hyperparameter
+    parser.add_argument('--unet_chans', type=int, default=32, help ='Number of channels for cascade U-Net') ## important hyperparameter
     parser.add_argument('--input-key', type=str, default='kspace', help='Name of input key')
     parser.add_argument('--target-key', type=str, default='image_label', help='Name of target key')
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')
@@ -114,6 +115,9 @@ if __name__ == '__main__':
           },
       'sens_chans': {
             'values': [4]
+          },
+      'unet_chans': {
+            'values': [8]
           },
     }
 

@@ -35,7 +35,8 @@ def forward(args):
 
     model = VarNet(num_cascades=args.cascade, 
                    chans=args.chans, 
-                   sens_chans=args.sens_chans)
+                   sens_chans=args.sens_chans,
+                   unet_chans=args.unet_chans)
     model.to(device=device)
     
     checkpoint = torch.load(args.exp_dir / 'best_model.pt', map_location='cpu')

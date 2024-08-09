@@ -188,7 +188,8 @@ def train(args):
 
     model = TM_Att_FIVarNet(num_cascades=wandb.config.cascade, 
                    chans=wandb.config.chans, 
-                   sens_chans=wandb.config.sens_chans)
+                   sens_chans=wandb.config.sens_chans,
+                   unet_chans=wandb.config.unet_chans)
 
     model.to(device=device)
 

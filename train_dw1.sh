@@ -14,6 +14,7 @@ python train_no_wandb.py \
   --cascade 3 \
   --chans 12 \
   --sens_chans 5 \
+  --unet_chans 5 \
   --input-key 'kspace' \
   --target-key 'image_label' \
   --max-key 'max' \
