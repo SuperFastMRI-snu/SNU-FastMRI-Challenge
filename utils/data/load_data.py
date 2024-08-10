@@ -28,7 +28,7 @@ class SliceData(Dataset):
 
         if not forward:
             # mask list 만들기
-            mask_acc = [9] # [4, 5, 6, 7, 8, 9]
+            mask_acc = [4,5,8,9] # [4, 5, 6, 7, 8, 9]
             mask_list = {}
 
             # data에서 중요한 것은 [-2] 위치의 원소. mask 벡터의 크기가 바로 [-2] 원소이다.

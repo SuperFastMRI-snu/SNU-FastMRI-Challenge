@@ -108,16 +108,16 @@ if __name__ == '__main__':
 
     parameters_dict = {
       'cascade': {
-          'values': [2, 3, 4]
+          'values': [4]
           },
       'chans': {
-          'values': [8, 9, 10]
+          'values': [6]
           },
       'sens_chans': {
-            'values': [4]
+            'values': [3]
           },
       'unet_chans': {
-            'values': [8]
+            'values': [6]
           },
     }
 
