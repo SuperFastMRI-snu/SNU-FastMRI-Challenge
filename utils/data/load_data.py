@@ -44,48 +44,26 @@ class SliceData(Dataset):
         if not forward:
             image_files = list(Path(root / "image").iterdir())
 
-            """
             for fname in sorted(image_files):
                 num_slices = self._get_metadata(fname)
-
-                self.image_examples += [
-                    (fname, slice_ind) for slice_ind in range(num_slices)
-                ]
-            """
-            # train data의 image_examples는 txt파일에서 가지고 오도록 함(google colab용)
-            files_num = len(image_files)
-            if True: #files_num==51:
-                # val data인 경우 원래처럼 image_examples 가지고 오기
-                for fname in sorted(image_files):
-                    num_slices = self._get_metadata(fname)
+                if self.DataAugmentor != None: # train 하는 경우
                     self.image_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
                     self.image_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
-                    
-            else:
-                self.image_examples = self._get_metadata2('image')
+                else: # val 하는 경우
+                    self.image_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
 
         kspace_files = list(Path(root / "kspace").iterdir())
 
-        """
-            for fname in sorted(kspace_files):
-                num_slices = self._get_metadata(fname)
-
-                self.kspace_examples += [
-                    (fname, slice_ind) for slice_ind in range(num_slices)
-                ]
-            """
-
-        # train data의 kspace_examples는 txt파일에서 가지고 오도록 함(google colab용)
-        files_num = len(kspace_files)
-        if True: #files_num==51:
-            # val data인 경우 원래처럼 kspace_examples 가지고 오기
-            for fname in sorted(kspace_files):
-                num_slices = self._get_metadata(fname)
-                self.kspace_examples += [(fname, slice_ind, args.acc[0]) for slice_ind in range(num_slices)]
-                self.kspace_examples += [(fname, slice_ind, args.acc[1]) for slice_ind in range(num_slices)]
-                
-        else:
-            self.kspace_examples = self._get_metadata2('kspace')
+        for fname in sorted(kspace_files):
+            num_slices = self._get_metadata(fname)
+            if not self.forward:
+                if self.DataAugmentor != None: # train 하는 경우
+                    self.kspace_examples += [(fname, slice_ind, args.acc[0]) for slice_ind in range(num_slices)]
+                    self.kspace_examples += [(fname, slice_ind, args.acc[1]) for slice_ind in range(num_slices)]
+                else: # val 하는 경우
+                    self.kspace_examples += [(fname, slice_ind, args.acc) for slice_ind in range(num_slices)]
+            else: # eval 하는 경우
+                self.kspace_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
 
 
     def _get_metadata(self, fname):
@@ -96,38 +74,31 @@ class SliceData(Dataset):
                 num_slices = hf[self.target_key].shape[0]
         return num_slices
 
-    def _get_metadata2(self, data_type):
-        examples = []
-        if data_type == 'image':
-            with open("/content/drive/MyDrive/Data/train_image_examples_mini.txt", "r") as f:
-                image_examples = f.read()
-                for line in image_examples.split('\n'):
-                    fname, dataslice = line.split()
-                    examples.append(tuple((Path(fname), int(dataslice))))
-        elif data_type == 'kspace':
-            with open("/content/drive/MyDrive/Data/train_kspace_examples_mini.txt", "r") as f:
-                kspace_examples = f.read()
-                for line in kspace_examples.split('\n'):
-                    fname, dataslice = line.split()
-                    examples.append(tuple((Path(fname), int(dataslice))))
-        return examples
-
     def __len__(self):
         return len(self.kspace_examples)
 
     def __getitem__(self, i):
-        if not self.forward:
+        if not self.forward: # train, val 하는 경우
             image_fname, _ = self.image_examples[i]
-        kspace_fname, dataslice, args_acc = self.kspace_examples[i]
+
+        if self.forward: # eval 하는 경우
+            kspace_fname, dataslice = self.kspace_examples[i]
+        else:
+            if self.DataAugmentor != None: # train 하는 경우
+                kspace_fname, dataslice, args_acc = self.kspace_examples[i]
+            else: # val 하는 경우
+                kspace_fname, dataslice, args_acc_list = self.kspace_examples[i]
+                args_acc = args_acc_list[round(torch.rand(1).item())]
+                del args_acc_list
         
         if not self.forward:
             # image_file을 열어서 target_size 가져오기
             with h5py.File(image_fname, "r") as hf:
                 target_size = hf[self.target_key][dataslice].shape
 
-        # kspace_fname에서 acc 정보 가져오기(mask 만들 때 사용)
-        str_kspace_fname = str(kspace_fname)
-        acc = int(str_kspace_fname.split('_')[1][-1])
+            # kspace_fname에서 acc 정보 가져오기(mask 만들 때 사용)
+            str_kspace_fname = str(kspace_fname)
+            acc = int(str_kspace_fname.split('_')[1][-1])
 
         # 파일 열어서 kspace, image 가져온 후 augment하기
         with h5py.File(kspace_fname, "r") as hf:
@@ -138,17 +109,18 @@ class SliceData(Dataset):
             input = torch.stack((input.real, input.imag), dim=-1)
 
             # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기 / random mask를 위한 p 설정
-            p = 0
             target = None
             if self.DataAugmentor != None:
-              input, target, p = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
+              input, target = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
 
             # random mask 항상 적용. Test 때는 적용 x
-            #random_acc = self.random_acc(acc, p)
-            if args_acc == acc and input.shape[-2] != 768:
-              mask =  np.array(hf["mask"])
-            else:
-              mask = self.mask_list[(args_acc, input.shape[-2])]
+            if not self.forward: # train, val 하는 경우
+                if args_acc == acc and input.shape[-2] != 768:
+                    mask =  np.array(hf["mask"])
+                else:
+                    mask = self.mask_list[(args_acc, input.shape[-2])]
+            else: # eval 하는 경우
+                mask =  np.array(hf["mask"])
 
             if self.forward:
                 target = -1
@@ -160,15 +132,6 @@ class SliceData(Dataset):
                       target = hf[self.target_key][dataslice]
         
         return self.transform(mask, input, target, attrs, kspace_fname.name, dataslice)
-    
-    def random_acc(self, acc, p):
-        if random.uniform(0, 1) < p*0.25/0.55:
-          # acc_list = [6, 7, 9]
-          # weights = [0.25, 0.25, 0.5]
-          # random_acc = random.choices(acc_list, weights = weights, k=1)[0]
-          return 9
-        else:
-          return acc
 
 
 def create_data_loaders(data_path, args, DataAugmentor=None, shuffle=False, isforward=False):

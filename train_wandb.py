@@ -130,7 +130,7 @@ if __name__ == '__main__':
     def train_using_wandb():
         # wandb run 하나 시작
         wandb.init(project = "TMAttFIVarNet-ensemble-test")
-        args.net_name = Path(str(wandb.config.cascade)+','+str(wandb.config.chans)+','+str(wandb.config.sens_chans)+','+str(wandb.config.unet_chans))
+        args.net_name = Path(str(wandb.config.cascade)+','+str(wandb.config.chans)+','+str(wandb.config.sens_chans)+','+str(wandb.config.unet_chans)+', acc '+str(args.acc[0]+args.acc[1]))
 
         args.exp_dir = '../result' / args.net_name / 'checkpoints'
         args.val_dir = '../result' / args.net_name / 'reconstructions_val'
@@ -143,4 +143,4 @@ if __name__ == '__main__':
         train(args)
 
     # wandb sweep
-    wandb.agent(sweep_id, train_using_wandb, count=4)
+    wandb.agent(sweep_id, train_using_wandb, count=1)

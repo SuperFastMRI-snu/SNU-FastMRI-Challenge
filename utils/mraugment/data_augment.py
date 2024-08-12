@@ -257,7 +257,7 @@ class DataAugmentor:
                     kspace = fft2c(im)
             target=None
 
-        return kspace, target, p
+        return kspace, target
         
     def schedule_p(self):
         D = self.hparams.aug_delay
