@@ -11,7 +11,7 @@ import torch
 import random
 from pathlib import Path
 
-def save_reconstructions(reconstructions, out_dir, epoch, targets=None, inputs=None):
+def save_reconstructions(reconstructions, out_dir, epoch=None, targets=None, inputs=None):
     """
     Saves the reconstructions from a model into h5 files that is appropriate for submission
     to the leaderboard.
