@@ -42,7 +42,8 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
 
             # 직접 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
             # FIVarNet_acc_fit model에만 사용
-            acceleration = round(mask.shape[-2]/int(mask.sum()))
+            indices_of_ones = torch.where(mask.flatten() == 1)[0]
+            acceleration = int(indices_of_ones[1]-indices_of_ones[0])
 
             output = model(kspace, mask, acceleration)
             loss = loss_type(output, target, maximum)
@@ -91,7 +92,8 @@ def validate(args, model, data_loader):
 
             # 직접 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
             # FIVarNet_acc_fit model에만 사용
-            acceleration = round(mask.shape[-2]/int(mask.sum()))
+            indices_of_ones = torch.where(mask.flatten() == 1)[0]
+            acceleration = int(indices_of_ones[1]-indices_of_ones[0])
 
             output = model(kspace, mask, acceleration)
 
@@ -230,7 +232,7 @@ def train(args):
     # ------------------
 
     train_loader = create_data_loaders(data_path = args.data_path_train, args = args, DataAugmentor = augmentor ,shuffle=True) #여기에 dataaugmentor를 argument 로 넣어줘야 함.
-    val_loader = create_data_loaders(data_path = args.data_path_val, args = args, DataAugmentor = augmentor)
+    val_loader = create_data_loaders(data_path = args.data_path_val, args = args, DataAugmentor = None)
 
     val_loss_log = np.empty((0, 2))
     for epoch in range(start_epoch, args.num_epochs):

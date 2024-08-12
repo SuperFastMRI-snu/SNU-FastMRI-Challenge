@@ -3,14 +3,14 @@ python train_no_wandb.py \
   -a 4 \
   -e 20 \
   -l 0.001 \
-  -p 2 \
-  -f 0.2 \
+  -p 5 \
+  -f 0.1 \
   -m 1.0 \
   -r 50 \
-  -i 200 \
-  -n 'test_TMAttVarNet1' \
-  -t '/content/train/' \
-  -v '/content/val/' \
+  -i 100 \
+  -n 'TMAttVarNet-ensemble-test' \
+  -t '/content/drive/MyDrive/Data/val' \
+  -v '/content/drive/MyDrive/Data/val' \
   --cascade 3 \
   --chans 12 \
   --sens_chans 5 \

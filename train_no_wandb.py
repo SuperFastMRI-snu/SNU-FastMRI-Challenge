@@ -22,12 +22,12 @@ def parse():
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=5, help='patience of ReduceLROnPlateau')
     parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
-    parser.add_argument('-m', '--max-norm', type=float, default=0.2, help='max_norm of gradient clipping')
+    parser.add_argument('-m', '--max-norm', type=float, default=1.0, help='max_norm of gradient clipping')
     parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
     parser.add_argument('-i', '--save-itr-interval', type=int, default=100, help='itr interval of model save')
     parser.add_argument('-n', '--net-name', type=Path, default='test_varnet', help='Name of network')
-    parser.add_argument('-t', '--data-path-train', type=Path, default='/content/train/', help='Directory of train data')
-    parser.add_argument('-v', '--data-path-val', type=Path, default='/content/val/', help='Directory of validation data')
+    parser.add_argument('-t', '--data-path-train', type=Path, default='/content/drive/MyDrive/Data/val', help='Directory of train data')
+    parser.add_argument('-v', '--data-path-val', type=Path, default='/content/drive/MyDrive/Data/val', help='Directory of validation data')
     
     parser.add_argument('--cascade', type=int, default=3, help='Number of cascades | Should be less than 12') ## important hyperparameter
     parser.add_argument('--chans', type=int, default=9, help='Number of channels for feature-domain | 18 in original varnet') ## important hyperparameter
@@ -37,6 +37,8 @@ def parse():
     parser.add_argument('--target-key', type=str, default='image_label', help='Name of target key')
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')
     parser.add_argument('--seed', type=int, default=430, help='Fix random seed')
+
+    parser.add_argument('--acc', type=int, default=[4, 5], help='accelerations on which the model will be trained')
 
     add_augmentation_specific_args(parser)
     args = parser.parse_args()

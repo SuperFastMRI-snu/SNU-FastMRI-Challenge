@@ -28,7 +28,7 @@ class SliceData(Dataset):
 
         if not forward:
             # mask list 만들기
-            mask_acc = [4,5,8,9] # [4, 5, 6, 7, 8, 9]
+            mask_acc = args.acc # [4, 5, 6, 7, 8, 9]
             mask_list = {}
 
             # data에서 중요한 것은 [-2] 위치의 원소. mask 벡터의 크기가 바로 [-2] 원소이다.
@@ -54,14 +54,15 @@ class SliceData(Dataset):
             """
             # train data의 image_examples는 txt파일에서 가지고 오도록 함(google colab용)
             files_num = len(image_files)
-            if files_num==51:
+            if True: #files_num==51:
                 # val data인 경우 원래처럼 image_examples 가지고 오기
                 for fname in sorted(image_files):
                     num_slices = self._get_metadata(fname)
                     self.image_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
+                    self.image_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
                     
             else:
-                self.image_examples = self._get_metadata2('image', DataAugmentor!=None)
+                self.image_examples = self._get_metadata2('image')
 
         kspace_files = list(Path(root / "kspace").iterdir())
 
@@ -76,14 +77,15 @@ class SliceData(Dataset):
 
         # train data의 kspace_examples는 txt파일에서 가지고 오도록 함(google colab용)
         files_num = len(kspace_files)
-        if files_num==51:
+        if True: #files_num==51:
             # val data인 경우 원래처럼 kspace_examples 가지고 오기
             for fname in sorted(kspace_files):
                 num_slices = self._get_metadata(fname)
-                self.kspace_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
+                self.kspace_examples += [(fname, slice_ind, args.acc[0]) for slice_ind in range(num_slices)]
+                self.kspace_examples += [(fname, slice_ind, args.acc[1]) for slice_ind in range(num_slices)]
                 
         else:
-            self.kspace_examples = self._get_metadata2('kspace', DataAugmentor!=None)
+            self.kspace_examples = self._get_metadata2('kspace')
 
 
     def _get_metadata(self, fname):
@@ -94,7 +96,7 @@ class SliceData(Dataset):
                 num_slices = hf[self.target_key].shape[0]
         return num_slices
 
-    def _get_metadata2(self, data_type, aug_on):
+    def _get_metadata2(self, data_type):
         examples = []
         if data_type == 'image':
             with open("/content/drive/MyDrive/Data/train_image_examples_mini.txt", "r") as f:
@@ -116,7 +118,7 @@ class SliceData(Dataset):
     def __getitem__(self, i):
         if not self.forward:
             image_fname, _ = self.image_examples[i]
-        kspace_fname, dataslice = self.kspace_examples[i]
+        kspace_fname, dataslice, args_acc = self.kspace_examples[i]
         
         if not self.forward:
             # image_file을 열어서 target_size 가져오기
@@ -137,15 +139,16 @@ class SliceData(Dataset):
 
             # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기 / random mask를 위한 p 설정
             p = 0
+            target = None
             if self.DataAugmentor != None:
               input, target, p = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
 
             # random mask 항상 적용. Test 때는 적용 x
-            random_acc = self.random_acc(acc, p)
-            if random_acc == acc and input.shape[-2] != 768:
+            #random_acc = self.random_acc(acc, p)
+            if args_acc == acc and input.shape[-2] != 768:
               mask =  np.array(hf["mask"])
             else:
-              mask = self.mask_list[(random_acc, input.shape[-2])]
+              mask = self.mask_list[(args_acc, input.shape[-2])]
 
             if self.forward:
                 target = -1

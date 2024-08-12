@@ -24,7 +24,10 @@ def save_reconstructions(reconstructions, out_dir, epoch, targets=None, inputs=N
         target (np.array): target array
     """
     # 모든 epoch마다 recon 따로 저장
-    out_dir_epoch =  Path(str(out_dir) + '/recon' + str(epoch))
+    if epoch!=None:
+      out_dir_epoch =  Path(str(out_dir) + '/recon' + str(epoch))
+    else:
+      out_dir_epoch = out_dir
 
     out_dir_epoch.mkdir(exist_ok=True, parents=True)
     for fname, recons in reconstructions.items():
