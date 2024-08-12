@@ -125,12 +125,12 @@ if __name__ == '__main__':
 
     sweep_config['parameters'] = parameters_dict
 
-    sweep_id = wandb.sweep(sweep_config, project="TMAttFIVarNet-ensemble-test")
+    sweep_id = wandb.sweep(sweep_config, project="FIVarNet-acc-fit-ensemble-test")
 
     def train_using_wandb():
         # wandb run 하나 시작
-        wandb.init(project = "TMAttFIVarNet-ensemble-test")
-        args.net_name = Path(str(wandb.config.cascade)+','+str(wandb.config.chans)+','+str(wandb.config.sens_chans)+','+str(wandb.config.unet_chans)+', acc '+str(args.acc[0]+args.acc[1]))
+        wandb.init(project = "FIVarNet-acc-fit-ensemble-test")
+        args.net_name = Path(str(wandb.config.cascade)+','+str(wandb.config.chans)+','+str(wandb.config.sens_chans)+','+str(wandb.config.unet_chans)+', acc '+str(args.acc[0])+' '+str(args.acc[1]))
 
         args.exp_dir = '../result' / args.net_name / 'checkpoints'
         args.val_dir = '../result' / args.net_name / 'reconstructions_val'

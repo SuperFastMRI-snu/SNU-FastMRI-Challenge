@@ -14,8 +14,8 @@ from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss, seed_fix
 from utils.common.loss_function import SSIMLoss
 
-# FIVarNet with channel&spatial-wise attention in UNet
-from utils.model.tm_att_fi_varnet import TM_Att_FIVarNet
+# FIVarNet with acc fitted block attention
+from utils.model.feature_varnet import FIVarNet_acc_fit
 
 
 from utils.mraugment.data_augment import DataAugmentor
@@ -171,7 +171,7 @@ def train(args):
     # this config will be set by Sweep Controller
     pprint.pprint(wandb.config) # cascade, chans, sens_chans, unet_chans 조합 출력
 
-    model = TM_Att_FIVarNet(num_cascades=wandb.config.cascade, 
+    model = FIVarNet_acc_fit(num_cascades=wandb.config.cascade, 
                    chans=wandb.config.chans, 
                    sens_chans=wandb.config.sens_chans,
                    unet_chans=wandb.config.unet_chans)

@@ -141,6 +141,7 @@ class SensitivityModel(nn.Module):
         in_chans: int = 2,
         out_chans: int = 2,
         drop_prob: float = 0.0,
+        mask_center: bool = True,
     ):
         """
         Args:
@@ -149,9 +150,11 @@ class SensitivityModel(nn.Module):
             in_chans: Number of channels in the input to the U-Net model.
             out_chans: Number of channels in the output to the U-Net model.
             drop_prob: Dropout probability.
+            mask_center: Whether to mask center of k-space for sensitivity map
+                calculation.
         """
         super().__init__()
-
+        self.mask_center = mask_center
         self.norm_unet = NormUnet(
             chans,
             num_pools,
@@ -174,22 +177,23 @@ class SensitivityModel(nn.Module):
     def divide_root_sum_of_squares(self, x: torch.Tensor) -> torch.Tensor:
         return x / fastmri.rss_complex(x, dim=1).unsqueeze(-1).unsqueeze(1)
 
-    def forward(self, masked_kspace: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        # get low frequency line locations and mask them out
-        squeezed_mask = mask[:, 0, 0, :, 0]
-        cent = squeezed_mask.shape[1] // 2
-        # running argmin returns the first non-zero
-        left = torch.argmin(squeezed_mask[:, :cent].flip(1), dim=1)
-        right = torch.argmin(squeezed_mask[:, cent:], dim=1)
-        num_low_freqs = torch.max(
-            2 * torch.min(left, right), torch.ones_like(left)
-        )  # force a symmetric center unless 1
-        pad = (mask.shape[-2] - num_low_freqs + 1) // 2
+    def forward(self, masked_kspace: torch.Tensor, mask: torch.Tensor, num_low_frequencies: int = None) -> torch.Tensor:
+        if self.mask_center:
+            # get low frequency line locations and mask them out
+            squeezed_mask = mask[:, 0, 0, :, 0]
+            cent = squeezed_mask.shape[1] // 2
+            # running argmin returns the first non-zero
+            left = torch.argmin(squeezed_mask[:, :cent].flip(1), dim=1)
+            right = torch.argmin(squeezed_mask[:, cent:], dim=1)
+            num_low_freqs = torch.max(
+                2 * torch.min(left, right), torch.ones_like(left)
+            )  # force a symmetric center unless 1
+            pad = (mask.shape[-2] - num_low_freqs + 1) // 2
 
-        x = transforms.batched_mask_center(masked_kspace, pad, pad + num_low_freqs)
+            masked_kspace = transforms.batched_mask_center(masked_kspace, pad, pad + num_low_freqs)
 
         # convert to image space
-        x = fastmri.ifft2c(x)
+        x = fastmri.ifft2c(masked_kspace)
         x, b = self.chans_to_batch_dim(x)
 
         # estimate sensitivities
