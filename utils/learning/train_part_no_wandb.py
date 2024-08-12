@@ -14,8 +14,8 @@ from utils.data.load_data import create_data_loaders
 from utils.common.utils import save_reconstructions, ssim_loss, seed_fix
 from utils.common.loss_function import SSIMLoss
 
-# FIVarNet with channel&spatial-wise attention in UNet
-from utils.model.tm_att_fi_varnet import TM_Att_FIVarNet
+# FIVarNet without block attention
+from utils.model.feature_varnet import FIVarNet_n_att
 
 
 from utils.mraugment.data_augment import DataAugmentor
@@ -40,12 +40,7 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             target = target.cuda(non_blocking=True)
             maximum = maximum.cuda(non_blocking=True)
 
-            # 직접 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
-            # FIVarNet_acc_fit model에만 사용
-            indices_of_ones = torch.where(mask.flatten() == 1)[0]
-            acceleration = int(indices_of_ones[1]-indices_of_ones[0])
-
-            output = model(kspace, mask, acceleration)
+            output = model(kspace, mask)
             loss = loss_type(output, target, maximum)
 
             # gradient accumulation을 위해 acc_steps로 나누어서 back prop후 optimizer 사용
@@ -90,12 +85,7 @@ def validate(args, model, data_loader):
             kspace = kspace.cuda(non_blocking=True)
             mask = mask.cuda(non_blocking=True)
 
-            # 직접 acceleration 계산한 뒤 각 itr별로 서로 다른 acc기반 attention 시행
-            # FIVarNet_acc_fit model에만 사용
-            indices_of_ones = torch.where(mask.flatten() == 1)[0]
-            acceleration = int(indices_of_ones[1]-indices_of_ones[0])
-
-            output = model(kspace, mask, acceleration)
+            output = model(kspace, mask)
 
             for i in range(output.shape[0]): # (KYG) output.shape[0] 은 1이다. 왜? for 문에서 data당 슬라이스 한 개씩만 들어오기 때문
                 reconstructions[fnames[i]][int(slices[i])] = output[i].cpu().numpy()
@@ -183,7 +173,7 @@ def train(args):
     torch.cuda.set_device(device)
     print('Current cuda device: ', torch.cuda.current_device())
 
-    model = TM_Att_FIVarNet(num_cascades=args.cascade, 
+    model = FIVarNet_n_att(num_cascades=args.cascade, 
                    chans=args.chans, 
                    sens_chans=args.sens_chans,
                    unet_chans=args.unet_chans)

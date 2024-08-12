@@ -25,10 +25,10 @@ def test(args, model1, model2, data_loader):
 
             # acc에 따른 model 선정
             if abs(acceleration - 4.5) < abs(acceleration - 8.5):
-                output = model1(kspace, mask, acceleration)
+                output = model1(kspace, mask)
                 print("model1")
             else:
-                output = model2(kspace, mask, acceleration)
+                output = model2(kspace, mask)
                 print("model2")
 
             for i in range(output.shape[0]):

@@ -15,11 +15,13 @@ import torch.nn.functional as F
 import torch.distributed as dist
 import numpy as np
 import math
+import fastmri
 from fastmri.data.transforms import center_crop, batched_mask_center
 from fastmri.fftc import ifft2c_new as ifft2c
 from fastmri.fftc import fft2c_new as fft2c
 from fastmri.coil_combine import rss_complex, rss
 from fastmri.math import complex_abs, complex_mul, complex_conj
+from fastmri.data import transforms
 
 
 def image_crop(image: Tensor, crop_size: Optional[Tuple[int, int]] = None) -> Tensor:
@@ -129,7 +131,6 @@ class NormStats(nn.Module):
 
 class FeatureImage(NamedTuple):
     features: Tensor
-    acceleration: Optional[int] = None
     sens_maps: Optional[Tensor] = None
     crop_size: Optional[Tuple[int, int]] = None
     means: Optional[Tensor] = None
@@ -180,103 +181,13 @@ class FeatureDecoder(nn.Module):
         return self.decoder(features) * torch.sqrt(variances) + means
 
 
-class AttentionPE(nn.Module):
-    def __init__(self, in_chans: int):
-        super().__init__()
-        self.in_chans = in_chans
-
-        self.norm = nn.InstanceNorm2d(in_chans)
-        self.q = nn.Conv2d(in_chans, in_chans, kernel_size=1, stride=1, padding=0)
-        self.k = nn.Conv2d(in_chans, in_chans, kernel_size=1, stride=1, padding=0)
-        self.v = nn.Conv2d(in_chans, in_chans, kernel_size=1, stride=1, padding=0)
-        self.proj_out = nn.Conv2d(
-            in_chans, in_chans, kernel_size=1, stride=1, padding=0
-        )
-        self.dilated_conv = nn.Conv2d(
-            in_chans, in_chans, kernel_size=3, stride=1, padding=2, dilation=2
-        )
-
-    def reshape_to_blocks(self, x: Tensor, accel: int) -> Tensor:
-        chans = x.shape[1]
-        pad_total = (accel - (x.shape[3] - accel)) % accel
-        pad_right = pad_total // 2
-        pad_left = pad_total - pad_right
-        x = F.pad(x, (pad_left, pad_right, 0, 0), "reflect")
-        return (
-            torch.stack(x.chunk(chunks=accel, dim=3), dim=-1)
-            .view(chans, -1, accel)
-            .permute(1, 0, 2)
-            .contiguous()
-        )
-
-    def reshape_from_blocks(
-        self, x: Tensor, image_size: Tuple[int, int], accel: int
-    ) -> Tensor:
-        chans = x.shape[1]
-        num_freq, num_phase = image_size
-        x = (
-            x.permute(1, 0, 2)
-            .reshape(1, chans, num_freq, -1, accel)
-            .permute(0, 1, 2, 4, 3)
-            .reshape(1, chans, num_freq, -1)
-        )
-        padded_phase = x.shape[3]
-        pad_total = padded_phase - num_phase
-        pad_right = pad_total // 2
-        pad_left = pad_total - pad_right
-        return x[:, :, :, pad_left : padded_phase - pad_right]
-
-    def get_positional_encodings(
-        self, seq_len: int, embed_dim: int, device: str
-    ) -> Tensor:
-        freqs = torch.tensor(
-            [1 / (10000 ** (2 * (i // 2) / embed_dim)) for i in range(embed_dim)],
-            device=device,
-        )
-        freqs = freqs.unsqueeze(0)
-        positions = torch.arange(seq_len, dtype=torch.float, device=device).unsqueeze(1)
-        scaled = positions * freqs
-        sin_encodings = torch.sin(scaled)
-        cos_encodings = torch.cos(scaled)
-        encodings = torch.cat([sin_encodings, cos_encodings], dim=1)[:, :embed_dim]
-        return encodings
-
-    def forward(self, x: Tensor, accel: int) -> Tensor:
-        im_size = (x.shape[2], x.shape[3])
-        h_ = x
-        h_ = self.norm(h_)
-
-        pos_enc = self.get_positional_encodings(x.shape[2], x.shape[3], h_.device.type)
-
-        h_ = h_ + pos_enc
-
-        q = self.dilated_conv(self.q(h_))
-        k = self.dilated_conv(self.k(h_))
-        v = self.dilated_conv(self.v(h_))
-
-        # compute attention
-        c = q.shape[1]
-        q = self.reshape_to_blocks(q, accel)
-        k = self.reshape_to_blocks(k, accel)
-        q = q.permute(0, 2, 1)  # b,hw,c
-        w_ = torch.bmm(q, k)  # b,hw,hw    w[b,i,j]=sum_c q[b,i,c]k[b,c,j]
-        w_ = w_ * (int(c) ** (-0.5))
-        w_ = torch.nn.functional.softmax(w_, dim=2)
-
-        # attend to values
-        v = self.reshape_to_blocks(v, accel)
-        w_ = w_.permute(0, 2, 1)  # b,hw,hw (first hw of k, second of q)
-        h_ = torch.bmm(v, w_)  # b, c,hw (hw of q) h_[b,c,j] = sum_i v[b,c,i] w_[b,i,j]
-        h_ = self.reshape_from_blocks(h_, im_size, accel)
-
-        h_ = self.proj_out(h_)
-
-        return x + h_
-
-
 class Unet(nn.Module):
     """
     PyTorch implementation of a U-Net model.
+    O. Ronneberger, P. Fischer, and Thomas Brox. U-net: Convolutional networks
+    for biomedical image segmentation. In International Conference on Medical
+    image computing and computer-assisted intervention, pages 234–241.
+    Springer, 2015.
     """
 
     def __init__(
@@ -286,8 +197,6 @@ class Unet(nn.Module):
         chans: int = 32,
         num_pool_layers: int = 4,
         drop_prob: float = 0.0,
-        use_attention: bool = False,
-        use_res: bool = False,
     ):
         """
         Args:
@@ -304,35 +213,28 @@ class Unet(nn.Module):
         self.chans = chans
         self.num_pool_layers = num_pool_layers
         self.drop_prob = drop_prob
-        self.use_attention = use_attention
-        self.use_res = use_res
 
-        self.down_sample_layers = nn.ModuleList([ConvBlock(in_chans, chans, drop_prob, use_res)])
-        if use_attention:
-            self.down_att_layers = nn.ModuleList([AttentionBlock(chans)])
+        self.down_sample_layers = nn.ModuleList([ConvBlock(in_chans, chans, drop_prob)])
         ch = chans
         for _ in range(num_pool_layers - 1):
-            self.down_sample_layers.append(ConvBlock(ch, ch * 2, drop_prob, use_res))
-            if use_attention:
-                self.down_att_layers.append(AttentionBlock(ch * 2))
+            self.down_sample_layers.append(ConvBlock(ch, ch * 2, drop_prob))
             ch *= 2
-
-        self.conv = ConvBlock(ch, ch * 2, drop_prob, use_res)
-        if use_attention:
-            self.conv_att = AttentionBlock(ch * 2)
+        self.conv = ConvBlock(ch, ch * 2, drop_prob)
 
         self.up_conv = nn.ModuleList()
         self.up_transpose_conv = nn.ModuleList()
-        if use_attention:
-            self.up_att = nn.ModuleList()
-        for _ in range(num_pool_layers):
+        for _ in range(num_pool_layers - 1):
             self.up_transpose_conv.append(TransposeConvBlock(ch * 2, ch))
-            self.up_conv.append(ConvBlock(ch * 2, ch, drop_prob, use_res))
-            if use_attention:
-                self.up_att.append(AttentionBlock(ch))
+            self.up_conv.append(ConvBlock(ch * 2, ch, drop_prob))
             ch //= 2
 
-        self.out_conv = nn.Conv2d(self.chans, self.out_chans, kernel_size=1, stride=1)
+        self.up_transpose_conv.append(TransposeConvBlock(ch * 2, ch))
+        self.up_conv.append(
+            nn.Sequential(
+                ConvBlock(ch * 2, ch, drop_prob),
+                nn.Conv2d(ch, self.out_chans, kernel_size=1, stride=1),
+            )
+        )
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         """
@@ -341,67 +243,352 @@ class Unet(nn.Module):
         Returns:
             Output tensor of shape `(N, out_chans, H, W)`.
         """
+
         stack = []
         output = image
 
-        if self.use_attention:  # use attention
-            # apply down-sampling layers
-            for layer, att in zip(self.down_sample_layers, self.down_att_layers):
-                output = layer(output)
-                output = att(output)
-                stack.append(output)
-                output = F.avg_pool2d(output, kernel_size=2, stride=2, padding=0)
+        # apply down-sampling layers
+        for layer in self.down_sample_layers:
+            output = layer(output)
+            stack.append(output)
+            output = F.avg_pool2d(output, kernel_size=2, stride=2, padding=0)
 
-            output = self.conv(output)
-            output = self.conv_att(output)
+        output = self.conv(output)
 
-            # apply up-sampling layers
-            for transpose_conv, conv, att in zip(self.up_transpose_conv, self.up_conv, self.up_att):
-                downsample_layer = stack.pop()
-                output = transpose_conv(output)
+        # apply up-sampling layers
+        for transpose_conv, conv in zip(self.up_transpose_conv, self.up_conv):
+            downsample_layer = stack.pop()
+            output = transpose_conv(output)
 
-                # reflect pad on the right/botton if needed to handle odd input dimensions
-                padding = [0, 0, 0, 0]
-                if output.shape[-1] != downsample_layer.shape[-1]:
-                    padding[1] = 1  # padding right
-                if output.shape[-2] != downsample_layer.shape[-2]:
-                    padding[3] = 1  # padding bottom
-                if torch.sum(torch.tensor(padding)) != 0:
-                    output = F.pad(output, padding, "reflect")
+            # reflect pad on the right/botton if needed to handle odd input dimensions
+            padding = [0, 0, 0, 0]
+            if output.shape[-1] != downsample_layer.shape[-1]:
+                padding[1] = 1  # padding right
+            if output.shape[-2] != downsample_layer.shape[-2]:
+                padding[3] = 1  # padding bottom
+            if torch.sum(torch.tensor(padding)) != 0:
+                output = F.pad(output, padding, "reflect")
 
-                output = torch.cat([output, downsample_layer], dim=1)
-                output = conv(output)
-                output = att(output)
-            output = self.out_conv(output)
-
-        else:  # no attention
-            # apply down-sampling layers
-            for layer in self.down_sample_layers:
-                output = layer(output)
-                stack.append(output)
-                output = F.avg_pool2d(output, kernel_size=2, stride=2, padding=0)
-
-            output = self.conv(output)
-
-            # apply up-sampling layers
-            for transpose_conv, conv in zip(self.up_transpose_conv, self.up_conv):
-                downsample_layer = stack.pop()
-                output = transpose_conv(output)
-
-                # reflect pad on the right/botton if needed to handle odd input dimensions
-                padding = [0, 0, 0, 0]
-                if output.shape[-1] != downsample_layer.shape[-1]:
-                    padding[1] = 1  # padding right
-                if output.shape[-2] != downsample_layer.shape[-2]:
-                    padding[3] = 1  # padding bottom
-                if torch.sum(torch.tensor(padding)) != 0:
-                    output = F.pad(output, padding, "reflect")
-
-                output = torch.cat([output, downsample_layer], dim=1)
-                output = conv(output)
-            output = self.out_conv(output)
-
+            output = torch.cat([output, downsample_layer], dim=1)
+            output = conv(output)
+        
         return output
+
+
+"""
+Facebook Unet Layers
+    ConvBlock
+    TransposeConvBlock
+"""
+
+
+class ConvBlock(nn.Module):
+    """
+    A Convolutional Block that consists of two convolution layers each followed by
+    instance normalization, LeakyReLU activation and dropout.
+    """
+
+    def __init__(self, in_chans: int, out_chans: int, drop_prob: float):
+        """
+        Args:
+            in_chans: Number of channels in the input.
+            out_chans: Number of channels in the output.
+            drop_prob: Dropout probability.
+        """
+        super().__init__()
+
+        self.in_chans = in_chans
+        self.out_chans = out_chans
+        self.drop_prob = drop_prob
+
+        self.layers = nn.Sequential(
+            nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
+            nn.InstanceNorm2d(out_chans),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.Dropout2d(drop_prob),
+            nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
+            nn.InstanceNorm2d(out_chans),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+            nn.Dropout2d(drop_prob),
+        )
+
+    def forward(self, image: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            image: Input 4D tensor of shape `(N, in_chans, H, W)`.
+        Returns:
+            Output tensor of shape `(N, out_chans, H, W)`.
+        """
+        return self.layers(image)
+
+
+class TransposeConvBlock(nn.Module):
+    """
+    A Transpose Convolutional Block that consists of one convolution transpose
+    layers followed by instance normalization and LeakyReLU activation.
+    """
+
+    def __init__(self, in_chans: int, out_chans: int):
+        """
+        Args:
+            in_chans: Number of channels in the input.
+            out_chans: Number of channels in the output.
+        """
+        super().__init__()
+
+        self.in_chans = in_chans
+        self.out_chans = out_chans
+
+        self.layers = nn.Sequential(
+            nn.ConvTranspose2d(
+                in_chans, out_chans, kernel_size=2, stride=2, bias=False
+            ),
+            nn.InstanceNorm2d(out_chans),
+            nn.LeakyReLU(negative_slope=0.2, inplace=True),
+        )
+
+    def forward(self, image: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            image: Input 4D tensor of shape `(N, in_chans, H, W)`.
+        Returns:
+            Output tensor of shape `(N, out_chans, H*2, W*2)`.
+        """
+        return self.layers(image)
+
+
+class NormUnet(nn.Module):
+    """
+    Normalized U-Net model.
+
+    This is the same as a regular U-Net, but with normalization applied to the
+    input before the U-Net. This keeps the values more numerically stable
+    during training.
+    """
+
+    def __init__(
+        self,
+        chans: int,
+        num_pools: int,
+        in_chans: int = 2,
+        out_chans: int = 2,
+        drop_prob: float = 0.0,
+    ):
+        """
+        Args:
+            chans: Number of output channels of the first convolution layer.
+            num_pools: Number of down-sampling and up-sampling layers.
+            in_chans: Number of channels in the input to the U-Net model.
+            out_chans: Number of channels in the output to the U-Net model.
+            drop_prob: Dropout probability.
+        """
+        super().__init__()
+
+        self.unet = Unet(
+            in_chans=in_chans,
+            out_chans=out_chans,
+            chans=chans,
+            num_pool_layers=num_pools,
+            drop_prob=drop_prob,
+        )
+
+    def complex_to_chan_dim(self, x: torch.Tensor) -> torch.Tensor:
+        b, c, h, w, two = x.shape
+        assert two == 2
+        return x.permute(0, 4, 1, 2, 3).reshape(b, 2 * c, h, w)
+
+    def chan_complex_to_last_dim(self, x: torch.Tensor) -> torch.Tensor:
+        b, c2, h, w = x.shape
+        assert c2 % 2 == 0
+        c = c2 // 2
+        return x.view(b, 2, c, h, w).permute(0, 2, 3, 4, 1).contiguous()
+
+    def norm(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # group norm
+        b, c, h, w = x.shape
+        x = x.view(b, 2, c // 2 * h * w)
+
+        mean = x.mean(dim=2).view(b, c, 1, 1)
+        std = x.std(dim=2).view(b, c, 1, 1)
+
+        x = x.view(b, c, h, w)
+
+        return (x - mean) / std, mean, std
+
+    def unnorm(
+        self, x: torch.Tensor, mean: torch.Tensor, std: torch.Tensor
+    ) -> torch.Tensor:
+        return x * std + mean
+
+    def pad(
+        self, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, Tuple[List[int], List[int], int, int]]:
+        _, _, h, w = x.shape
+        w_mult = ((w - 1) | 15) + 1
+        h_mult = ((h - 1) | 15) + 1
+        w_pad = [math.floor((w_mult - w) / 2), math.ceil((w_mult - w) / 2)]
+        h_pad = [math.floor((h_mult - h) / 2), math.ceil((h_mult - h) / 2)]
+        # TODO: fix this type when PyTorch fixes theirs
+        # the documentation lies - this actually takes a list
+        # https://github.com/pytorch/pytorch/blob/master/torch/nn/functional.py#L3457
+        # https://github.com/pytorch/pytorch/pull/16949
+        x = F.pad(x, w_pad + h_pad)
+
+        return x, (h_pad, w_pad, h_mult, w_mult)
+
+    def unpad(
+        self,
+        x: torch.Tensor,
+        h_pad: List[int],
+        w_pad: List[int],
+        h_mult: int,
+        w_mult: int,
+    ) -> torch.Tensor:
+        return x[..., h_pad[0] : h_mult - h_pad[1], w_pad[0] : w_mult - w_pad[1]]
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if not x.shape[-1] == 2:
+            raise ValueError("Last dimension must be 2 for complex.")
+
+        # get shapes for unet and normalize
+        x = self.complex_to_chan_dim(x)
+        x, mean, std = self.norm(x)
+        x, pad_sizes = self.pad(x)
+
+        x = self.unet(x)
+
+        # get shapes back and unnormalize
+        x = self.unpad(x, *pad_sizes)
+        x = self.unnorm(x, mean, std)
+        x = self.chan_complex_to_last_dim(x)
+
+        return x
+
+
+class SensitivityModel(nn.Module):
+    """
+    Model for learning sensitivity estimation from k-space data.
+
+    This model applies an IFFT to multichannel k-space data and then a U-Net
+    to the coil images to estimate coil sensitivities. It can be used with the
+    end-to-end variational network.
+    """
+
+    def __init__(
+        self,
+        chans: int,
+        num_pools: int,
+        in_chans: int = 2,
+        out_chans: int = 2,
+        drop_prob: float = 0.0,
+        mask_center: bool = True,
+    ):
+        """
+        Args:
+            chans: Number of output channels of the first convolution layer.
+            num_pools: Number of down-sampling and up-sampling layers.
+            in_chans: Number of channels in the input to the U-Net model.
+            out_chans: Number of channels in the output to the U-Net model.
+            drop_prob: Dropout probability.
+            mask_center: Whether to mask center of k-space for sensitivity map
+                calculation.
+        """
+        super().__init__()
+        self.mask_center = mask_center
+        self.norm_unet = NormUnet(
+            chans,
+            num_pools,
+            in_chans=in_chans,
+            out_chans=out_chans,
+            drop_prob=drop_prob,
+        )
+
+    def chans_to_batch_dim(self, x: torch.Tensor) -> Tuple[torch.Tensor, int]:
+        b, c, h, w, comp = x.shape
+
+        return x.view(b * c, 1, h, w, comp), b
+
+    def batch_chans_to_chan_dim(self, x: torch.Tensor, batch_size: int) -> torch.Tensor:
+        bc, _, h, w, comp = x.shape
+        c = bc // batch_size
+
+        return x.view(batch_size, c, h, w, comp)
+
+    def divide_root_sum_of_squares(self, x: torch.Tensor) -> torch.Tensor:
+        return x / fastmri.rss_complex(x, dim=1).unsqueeze(-1).unsqueeze(1)
+
+    def forward(self, masked_kspace: torch.Tensor, mask: torch.Tensor, num_low_frequencies: int = None) -> torch.Tensor:
+        if self.mask_center:
+            # get low frequency line locations and mask them out
+            squeezed_mask = mask[:, 0, 0, :, 0]
+            cent = squeezed_mask.shape[1] // 2
+            # running argmin returns the first non-zero
+            left = torch.argmin(squeezed_mask[:, :cent].flip(1), dim=1)
+            right = torch.argmin(squeezed_mask[:, cent:], dim=1)
+            num_low_freqs = torch.max(
+                2 * torch.min(left, right), torch.ones_like(left)
+            )  # force a symmetric center unless 1
+            pad = (mask.shape[-2] - num_low_freqs + 1) // 2
+
+            masked_kspace = transforms.batched_mask_center(masked_kspace, pad, pad + num_low_freqs)
+
+        # convert to image space
+        x = fastmri.ifft2c(masked_kspace)
+        x, b = self.chans_to_batch_dim(x)
+
+        # estimate sensitivities
+        x = self.norm_unet(x)
+        x = self.batch_chans_to_chan_dim(x, b)
+        x = self.divide_root_sum_of_squares(x)
+
+        return x
+
+
+class VarNetBlock(nn.Module):
+    """
+    Model block for end-to-end variational network.
+
+    This model applies a combination of soft data consistency with the input
+    model as a regularizer. A series of these blocks can be stacked to form
+    the full variational network.
+    """
+
+    def __init__(self, model: nn.Module):
+        """
+        Args:
+            model: Module for "regularization" component of variational
+                network.
+        """
+        super().__init__()
+
+        self.model = model
+        self.dc_weight = nn.Parameter(torch.ones(1))
+
+    def sens_expand(self, x: torch.Tensor, sens_maps: torch.Tensor) -> torch.Tensor:
+        return fastmri.fft2c(fastmri.complex_mul(x, sens_maps))
+
+    def sens_reduce(self, x: torch.Tensor, sens_maps: torch.Tensor) -> torch.Tensor:
+        x = fastmri.ifft2c(x)
+        return fastmri.complex_mul(x, fastmri.complex_conj(sens_maps)).sum(
+            dim=1, keepdim=True
+        )
+
+    def forward(
+        self,
+        current_kspace: torch.Tensor,
+        ref_kspace: torch.Tensor,
+        mask: torch.Tensor,
+        sens_maps: torch.Tensor,
+    ) -> torch.Tensor:
+        zero = torch.zeros(1, 1, 1, 1, 1).to(current_kspace)
+        soft_dc = torch.where(mask, current_kspace - ref_kspace, zero) * self.dc_weight
+        model_term = self.sens_expand(
+            self.model(self.sens_reduce(current_kspace, sens_maps)), sens_maps
+        )
+
+        return current_kspace - soft_dc - model_term
+
+
 
 class Unet2d(nn.Module):
     def __init__(
@@ -412,8 +599,6 @@ class Unet2d(nn.Module):
         num_pool_layers: int = 4,
         drop_prob: float = 0.0,
         output_bias: bool = False,
-        use_attention: bool = False,
-        use_res: bool = False,
     ):
         super().__init__()
         self.in_chans = in_chans
@@ -430,13 +615,10 @@ class Unet2d(nn.Module):
                 in_planes=planes * chans,
                 out_planes=2 * planes * chans,
                 drop_prob=drop_prob,
-                use_attention=use_attention, 
-                use_res=use_res,
             )
 
         self.layer = UnetLevel(
-            layer, in_planes=in_chans, out_planes=chans, drop_prob=drop_prob,
-            use_attention=use_attention, use_res=use_res,
+            layer, in_planes=in_chans, out_planes=chans, drop_prob=drop_prob
         )
 
         if output_bias:
@@ -486,21 +668,14 @@ class UnetLevel(nn.Module):
         in_planes: int,
         out_planes: int,
         drop_prob: float = 0.0,
-        use_attention: bool = False,
-        use_res: bool = False
-        
     ):
         super().__init__()
         self.in_planes = in_planes
         self.out_planes = out_planes
-        self.use_attention = use_attention
-        self.use_res = use_res
 
         self.left_block = ConvBlock(
-            in_chans=in_planes, out_chans=out_planes, drop_prob=drop_prob, use_res=use_res
+            in_chans=in_planes, out_chans=out_planes, drop_prob=drop_prob
         )
-        if use_attention:
-            self.left_att_block = AttentionBlock(out_planes)
 
         self.child = child
 
@@ -514,10 +689,8 @@ class UnetLevel(nn.Module):
                 raise TypeError("Child must be an instance of UnetLevel")
 
             self.right_block = ConvBlock(
-                in_chans=2 * out_planes, out_chans=out_planes, drop_prob=drop_prob, use_res=use_res
+                in_chans=2 * out_planes, out_chans=out_planes, drop_prob=drop_prob
             )
-            if use_attention:
-                self.right_att_block = AttentionBlock(out_planes)
 
     def down_up(self, image: Tensor) -> Tensor:
         if self.child is None:
@@ -529,324 +702,14 @@ class UnetLevel(nn.Module):
 
     def forward(self, image: Tensor) -> Tensor:
         image = self.left_block(image)
-        if self.use_attention:
-            image = self.left_att_block(image)  
+
         if self.child is not None:
             image = self.right_block(torch.cat((image, self.down_up(image)), 1))
-            if self.use_attention:
-                image = self.right_att_block(image)
 
         return image
 
 
-class ConvBlock(nn.Module):
-    """
-    A Convolutional Block that consists of two convolution layers each followed by
-    instance normalization, LeakyReLU activation and dropout.
-    """
-
-    def __init__(
-            self,
-            in_chans: int,
-            out_chans: int,
-            drop_prob: float,
-            use_res: bool = True,):
-        """
-        Args:
-            in_chans: Number of channels in the input.
-            out_chans: Number of channels in the output.
-            drop_prob: Dropout probability.
-        """
-        super().__init__()
-
-        self.in_chans = in_chans
-        self.out_chans = out_chans
-        self.drop_prob = drop_prob
-        self.use_res = use_res
-
-        self.layers = nn.Sequential(
-            nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
-            nn.InstanceNorm2d(out_chans),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            nn.Dropout2d(drop_prob),
-            nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        )
-
-        self.conv1x1 = nn.Sequential(
-            nn.Conv2d(in_chans, out_chans, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(out_chans),
-        )
-
-        self.layers_out = nn.Sequential(
-            nn.InstanceNorm2d(out_chans),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            nn.Dropout2d(drop_prob),
-        )
-
-    def forward(self, image: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            image: Input 4D tensor of shape `(N, in_chans, H, W)`.
-        Returns:
-            Output tensor of shape `(N, out_chans, H, W)`.
-        """
-        if self.use_res:
-            return self.layers_out(self.layers(image) + self.conv1x1(image))
-        else:
-            return self.layers_out(self.layers(image))
-
-
-class TransposeConvBlock(nn.Module):
-    def __init__(self, in_chans: int, out_chans: int):
-        super().__init__()
-
-        self.in_chans = in_chans
-        self.out_chans = out_chans
-
-        self.layers = nn.Sequential(
-            nn.ConvTranspose2d(
-                in_chans, out_chans, kernel_size=2, stride=2, bias=False
-            ),
-            nn.InstanceNorm2d(out_chans),
-            nn.LeakyReLU(negative_slope=0.2, inplace=True),
-        )
-
-    def forward(self, image: torch.Tensor) -> torch.Tensor:
-        return self.layers(image)
-
-
-class AttentionBlock(nn.Module):
-    """
-    Attention block with channel and spatial-wise attention mechanism.
-    """
-    def __init__(self, num_ch, r=2):
-        super(AttentionBlock, self).__init__()
-        self.C = num_ch
-        self.r = r
-
-        self.sig = nn.Sigmoid()
-        # channel attention
-        self.fc_ch = nn.Sequential(nn.Linear(self.C, self.C//self.r),
-                                   nn.ReLU(inplace=True),
-                                   nn.Linear(self.C//self.r, self.C),)
-        # spatial attention
-        self.conv = nn.Conv2d(self.C, 1, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False)
-
-    def forward(self, inputs):  # [N,C,H,W]
-        b, c, h, w = inputs.shape
-        # spatial attention
-        sa = self.conv(inputs)
-        sa = self.sig(sa)
-        inputs_s = sa * inputs
-
-        # channel attention
-        ca = torch.abs(inputs)
-        # ca = self.pool(ca)  # [B,C,1,1]
-        ca = torch.mean(ca.reshape(b, c, -1), dim=2)  # [B,C]
-        ca = self.fc_ch(ca)  # [B,C]
-        ca = self.sig(ca).reshape(b, c, 1, 1)  #[B,C,1,1]
-        inputs_c = ca * inputs
-
-        outputs = torch.max(inputs_s, inputs_c)
-        return outputs
-
-
-class NormUnet(nn.Module):
-    def __init__(
-        self,
-        chans: int,
-        num_pools: int,
-        in_chans: int = 2,
-        out_chans: int = 2,
-        drop_prob: float = 0.0,
-        use_attention: bool = True,
-        use_res: bool = False,
-    ):
-
-        super().__init__()
-
-        self.unet = Unet(
-            in_chans=in_chans,
-            out_chans=out_chans,
-            chans=chans,
-            num_pool_layers=num_pools,
-            drop_prob=drop_prob,
-            use_attention=use_attention,
-            use_res=use_res,
-        )
-
-    def complex_to_chan_dim(self, x: torch.Tensor) -> torch.Tensor:
-        b, c, h, w, two = x.shape
-        assert two == 2
-        return x.permute(0, 4, 1, 2, 3).reshape(b, 2 * c, h, w)
-
-    def chan_complex_to_last_dim(self, x: torch.Tensor) -> torch.Tensor:
-        b, c2, h, w = x.shape
-        assert c2 % 2 == 0
-        c = c2 // 2
-        return x.view(b, 2, c, h, w).permute(0, 2, 3, 4, 1).contiguous()
-
-    def norm(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # group norm
-        b, c, h, w = x.shape
-        x = x.view(b, c, h * w)
-
-        mean = x.mean(dim=2).view(b, c, 1, 1)
-        std = x.std(dim=2).view(b, c, 1, 1)
-
-        x = x.view(b, c, h, w)
-
-        return (x - mean) / std, mean, std
-
-    def unnorm(
-        self, x: torch.Tensor, mean: torch.Tensor, std: torch.Tensor
-    ) -> torch.Tensor:
-        return x * std + mean
-
-    def pad(
-        self, x: torch.Tensor
-    ) -> Tuple[torch.Tensor, Tuple[List[int], List[int], int, int]]:
-        _, _, h, w = x.shape
-        w_mult = ((w - 1) | 15) + 1
-        h_mult = ((h - 1) | 15) + 1
-        w_pad = [math.floor((w_mult - w) / 2), math.ceil((w_mult - w) / 2)]
-        h_pad = [math.floor((h_mult - h) / 2), math.ceil((h_mult - h) / 2)]
-        x = F.pad(x, w_pad + h_pad)
-
-        return x, (h_pad, w_pad, h_mult, w_mult)
-
-    def unpad(
-        self,
-        x: torch.Tensor,
-        h_pad: List[int],
-        w_pad: List[int],
-        h_mult: int,
-        w_mult: int,
-    ) -> torch.Tensor:
-        return x[..., h_pad[0] : h_mult - h_pad[1], w_pad[0] : w_mult - w_pad[1]]
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if not x.shape[-1] == 2:
-            raise ValueError("Last dimension must be 2 for complex.")
-
-        # get shapes for unet and normalize
-        x = self.complex_to_chan_dim(x)
-        x, mean, std = self.norm(x)
-        x, pad_sizes = self.pad(x)
-
-        # attention_goes_here
-        x = self.unet(x)
-
-        # get shapes back and unnormalize
-        x = self.unpad(x, *pad_sizes)
-        x = self.unnorm(x, mean, std)
-        x = self.chan_complex_to_last_dim(x)
-
-        return x
-
-
-class SensitivityModel(nn.Module):
-    """
-    Model for learning sensitivity estimation from k-space data.
-
-    This model applies an IFFT to multichannel k-space data and then a U-Net
-    to the coil images to estimate coil sensitivities. It can be used with the
-    end-to-end variational network.
-    """
-
-    def __init__(
-        self,
-        chans: int,
-        num_pools: int,
-        in_chans: int = 2,
-        out_chans: int = 2,
-        drop_prob: float = 0.0,
-        mask_center: bool = True,
-        use_attention: bool = False,
-        use_res: bool = True,
-    ):
-        """
-        Args:
-            chans: Number of output channels of the first convolution layer.
-            num_pools: Number of down-sampling and up-sampling layers.
-            in_chans: Number of channels in the input to the U-Net model.
-            out_chans: Number of channels in the output to the U-Net model.
-            drop_prob: Dropout probability.
-            mask_center: Whether to mask center of k-space for sensitivity map
-                calculation.
-        """
-        super().__init__()
-        self.mask_center = mask_center
-        self.norm_unet = NormUnet(
-            chans,
-            num_pools,
-            in_chans=in_chans,
-            out_chans=out_chans,
-            drop_prob=drop_prob,
-            use_attention=use_attention,
-            use_res=use_res,
-        )
-
-    def chans_to_batch_dim(self, x: torch.Tensor) -> Tuple[torch.Tensor, int]:
-        b, c, h, w, comp = x.shape
-
-        return x.view(b * c, 1, h, w, comp), b
-
-    def batch_chans_to_chan_dim(self, x: torch.Tensor, batch_size: int) -> torch.Tensor:
-        bc, _, h, w, comp = x.shape
-        c = bc // batch_size
-
-        return x.view(batch_size, c, h, w, comp)
-
-    def divide_root_sum_of_squares(self, x: torch.Tensor) -> torch.Tensor:
-        return x / rss_complex(x, dim=1).unsqueeze(-1).unsqueeze(1)
-
-    def get_pad_and_num_low_freqs(
-        self, mask: torch.Tensor, num_low_frequencies: Optional[int] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        if num_low_frequencies is None or num_low_frequencies == 0:
-            # get low frequency line locations and mask them out
-            squeezed_mask = mask[:, 0, 0, :, 0].to(torch.int8)
-            cent = squeezed_mask.shape[1] // 2
-            # running argmin returns the first non-zero
-            left = torch.argmin(squeezed_mask[:, :cent].flip(1), dim=1)
-            right = torch.argmin(squeezed_mask[:, cent:], dim=1)
-            num_low_frequencies_tensor = torch.max(
-                2 * torch.min(left, right), torch.ones_like(left)
-            )  # force a symmetric center unless 1
-        else:
-            num_low_frequencies_tensor = num_low_frequencies * torch.ones(
-                mask.shape[0], dtype=mask.dtype, device=mask.device
-            )
-
-        pad = torch.div(
-            mask.shape[-2] - num_low_frequencies_tensor + 1, 2, rounding_mode="trunc"
-        )
-
-        return pad, num_low_frequencies_tensor
-
-    def forward(
-        self,
-        masked_kspace: torch.Tensor,
-        mask: torch.Tensor,
-        num_low_frequencies: Optional[int] = None,
-    ) -> torch.Tensor:
-        if self.mask_center:
-            pad, num_low_freqs = self.get_pad_and_num_low_freqs(
-                mask, num_low_frequencies
-            )
-            masked_kspace = batched_mask_center(masked_kspace, pad, pad + num_low_freqs)
-
-        # convert to image space
-        images, batches = self.chans_to_batch_dim(ifft2c(masked_kspace))
-
-        # estimate sensitivities
-        return self.divide_root_sum_of_squares(
-            self.batch_chans_to_chan_dim(self.norm_unet(images), batches)
-        )
-
-
-class TM_Att_FIVarNet(nn.Module):
+class FIVarNet_n_att(nn.Module):
     def __init__(
         self,
         num_cascades: int = 12,
@@ -858,9 +721,6 @@ class TM_Att_FIVarNet(nn.Module):
         mask_center: bool = True,
         image_conv_cascades: Optional[List[int]] = None,
         kspace_mult_factor: float = 1e6,
-        drop_prob: float = 0.0,
-        use_attention: bool = True,
-        use_res: bool = True,
     ):
         super().__init__()
         if image_conv_cascades is None:
@@ -872,8 +732,6 @@ class TM_Att_FIVarNet(nn.Module):
             chans=sens_chans,
             num_pools=sens_pools,
             mask_center=mask_center,
-            use_attention=use_attention,
-            use_res=use_res,
         )
         self.encoder = FeatureEncoder(in_chans=2, feature_chans=chans)
         self.decoder = FeatureDecoder(feature_chans=chans, out_chans=2)
@@ -881,20 +739,18 @@ class TM_Att_FIVarNet(nn.Module):
         for ind in range(num_cascades):
             use_image_conv = ind in self.image_conv_cascades
             cascades.append(
-                AttentionFeatureVarNetBlock(
+                FeatureVarNetBlock(
                     encoder=self.encoder,
                     decoder=self.decoder,
                     feature_processor=Unet2d(
-                        in_chans=chans, out_chans=chans, chans=unet_chans, num_pool_layers=pools,
-                        drop_prob=drop_prob, use_attention=use_attention, use_res=use_res,
+                        in_chans=chans, out_chans=chans, chans=unet_chans, num_pool_layers=pools
                     ),
-                    attention_layer=AttentionPE(in_chans=chans),
                     use_extra_feature_conv=use_image_conv,
                 )
             )
 
         self.image_cascades = nn.ModuleList(
-            [VarNetBlock(NormUnet(unet_chans, pools, drop_prob=drop_prob, use_attention=use_attention, use_res=use_res)) for _ in range(num_cascades)]
+            [VarNetBlock(NormUnet(unet_chans, pools)) for _ in range(num_cascades)]
         )
 
         self.decode_norm = nn.InstanceNorm2d(chans)
@@ -913,7 +769,6 @@ class TM_Att_FIVarNet(nn.Module):
         self,
         masked_kspace: Tensor,
         mask: Tensor,
-        acceleration: int,
         crop_size: Optional[Tuple[int, int]],
         num_low_frequencies: Optional[int],
     ) -> FeatureImage:
@@ -927,7 +782,6 @@ class TM_Att_FIVarNet(nn.Module):
 
         return FeatureImage(
             features=features,
-            acceleration=acceleration,
             sens_maps=sens_maps,
             crop_size=crop_size,
             means=means,
@@ -940,7 +794,6 @@ class TM_Att_FIVarNet(nn.Module):
         self,
         masked_kspace: Tensor,
         mask: Tensor,
-        acceleration: int,
         num_low_frequencies: Optional[int] = None,
         crop_size: Optional[Tuple[int, int]] = None,
     ) -> Tensor:
@@ -949,7 +802,6 @@ class TM_Att_FIVarNet(nn.Module):
         feature_image = self._encode_input(
             masked_kspace=masked_kspace,
             mask=mask,
-            acceleration=acceleration,
             crop_size=crop_size,
             num_low_frequencies=num_low_frequencies,
         )
@@ -969,26 +821,23 @@ class TM_Att_FIVarNet(nn.Module):
         result = rss(
             complex_abs(ifft2c(kspace_pred)), dim=1
         )  # Ensure kspace_pred is a Tensor
-
         height = result.shape[-2]
         width = result.shape[-1]
         return result[..., (height - 384) // 2 : 384 + (height - 384) // 2, (width - 384) // 2 : 384 + (width - 384) // 2]
 
 
-class AttentionFeatureVarNetBlock(nn.Module):
+class FeatureVarNetBlock(nn.Module):
     def __init__(
         self,
         encoder: FeatureEncoder,
         decoder: FeatureDecoder,
         feature_processor: Unet2d,
-        attention_layer: AttentionPE,
         use_extra_feature_conv: bool = False,
     ):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.feature_processor = feature_processor
-        self.attention_layer = attention_layer
         self.use_image_conv = use_extra_feature_conv
         self.dc_weight = nn.Parameter(torch.ones(1))
         feature_chans = self.encoder.feature_chans
@@ -1078,9 +927,7 @@ class AttentionFeatureVarNetBlock(nn.Module):
         file_name = f'kspace_{timestamp}.mat'
         savemat(file_name, {'kspace_': new_ref_kspace})
         """
-        feature_image = feature_image._replace(
-            features=self.attention_layer(feature_image.features, feature_image.acceleration)
-        )
+
         new_features = new_features - self.apply_model_with_crop(feature_image)
 
         if self.use_image_conv:
@@ -1088,46 +935,3 @@ class AttentionFeatureVarNetBlock(nn.Module):
             new_features = new_features + self.output_conv(new_features)
 
         return feature_image._replace(features=new_features)
-
-
-class VarNetBlock(nn.Module):
-    """
-    Model block for end-to-end variational network.
-
-    This model applies a combination of soft data consistency with the input
-    model as a regularizer. A series of these blocks can be stacked to form
-    the full variational network.
-    """
-
-    def __init__(self, model: nn.Module):
-        """
-        Args:
-            model: Module for "regularization" component of variational
-                network.
-        """
-        super().__init__()
-
-        self.model = model
-        self.dc_weight = nn.Parameter(torch.ones(1))
-
-    def sens_expand(self, x: torch.Tensor, sens_maps: torch.Tensor) -> torch.Tensor:
-        return fft2c(complex_mul(x, sens_maps))
-
-    def sens_reduce(self, x: torch.Tensor, sens_maps: torch.Tensor) -> torch.Tensor:
-        return complex_mul(ifft2c(x), complex_conj(sens_maps)).sum(dim=1, keepdim=True)
-
-    def forward(
-        self,
-        current_kspace: torch.Tensor,
-        ref_kspace: torch.Tensor,
-        mask: torch.Tensor,
-        sens_maps: torch.Tensor,
-    ) -> torch.Tensor:
-        zero = torch.zeros(1, 1, 1, 1, 1).to(current_kspace)
-        soft_dc = torch.where(mask, current_kspace - ref_kspace, zero) * self.dc_weight
-
-        model_term = self.sens_expand(
-            self.model(self.sens_reduce(current_kspace, sens_maps)), sens_maps
-        )
-
-        return current_kspace - soft_dc - model_term
