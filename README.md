@@ -15,6 +15,16 @@
 ## What is fastMRI?
 FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience.
 
+## SuperFastMRI team
+We participated in the SNU FastMRI Challenge as a two-person team named SuperFastMRI.
+### Team Members
+* Dongwook Kho
+  - Undergraduate in the Department of Electrical and Computer Engineering, Seoul National University
+  - Email : kho2011@snu.ac.kr, khodong2014@gmail.com
+* Yoongon Kim
+  - Undergraduate in the Department of Electrical and Computer Engineering, Seoul National University
+  - Email : yoon_g_kim@snu.ac.kr, yooongonkim@gmail.com
+
 ## Reference
 [1] Zbontar, J.*, Knoll, F.*, Sriram, A.*, Murrell, T., Huang, Z., Muckley, M. J., ... & Lui, Y. W. (2018). fastMRI: An Open Dataset and Benchmarks for Accelerated MRI. arXiv preprint arXiv:1811.08839.
 
