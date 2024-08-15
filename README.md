@@ -33,8 +33,12 @@ We participated in the SNU FastMRI Challenge as a two-person team named SuperFas
   - github: [Yoongon-Kim](https://github.com/Yoongon-Kim)
 
 ## Our Model
-Our model is based on [Feature-Image (FI) VarNet](https://www.nature.com/articles/s41598-024-59705-0). However, since the GPU VRAM is limited to 8GB, we discarded Block-wise Attention to save the memory for more cascades and deeper UNet inside the FI VarNet.
+Our model used MoE strategy with three [Feature-Image (FI) VarNet](https://www.nature.com/articles/s41598-024-59705-0) models. However, due to the 8GB limit on GPU VRAM, we discarded Block-wise Attention in each FI-VarNet model to save memory for more cascades and deeper UNets within the model.
 
+### MoE strategy
+
+
+### Feature-Image VarNet
 We were able to conserve most of the high-level features which are discarded in the last conv layer of each cascade in E2E VarNet
 
 ## Reference
