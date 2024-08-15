@@ -1,5 +1,5 @@
 # 2024 SNU FastMRI_challenge
-2024 SNU FastMRI challenge is a challenge based on Facebook AI's FastMRI challenge, but with different conditions. Below are the new conditions added by SNU FastMRI Challenge.
+[2024 SNU FastMRI challenge](https://fastmri.snu.ac.kr/) is a challenge based on [Facebook AI's FastMRI challenge](https://web.archive.org/web/20230324102125mp_/https://fastmri.org/leaderboards), but with different conditions. Below are the new conditions added by SNU FastMRI Challenge.
 * 8GB VRAM
 * Only multi-coil brain datasets
 * More types of acceleration
@@ -12,20 +12,30 @@
 * Can not use pretrained model
 * Limited inference time (3,000 seconds)
 
-AIRS Medical, which developed AIRS-Net and is currently leading the public leaderboard of the Facebook AI FastMRI Challenge, sponsored the competition.
+You can check SNU FastMRI challenge's baseline models and codes [here](https://github.com/LISTatSNU/FastMRI_challenge). [E2E VarNet](https://arxiv.org/abs/2004.06688) and UNet were given as baseline models.
+
+[AIRS Medical](https://airsmed.com/en/), which developed AIRS-Net and is currently leading the public leaderboard of the Facebook AI FastMRI Challenge, sponsored the competition.
 
 ## What is fastMRI?
 FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience.
 
 ## SuperFastMRI team
 We participated in the SNU FastMRI Challenge as a two-person team named SuperFastMRI.
+
 ### Team Members
 * Dongwook Kho
   - Undergraduate in the Department of Electrical and Computer Engineering, Seoul National University
   - Email : kho2011@snu.ac.kr, khodong2014@gmail.com
+  - github : [KhoDongwook](https://github.com/KhoDongwook)
 * Yoongon Kim
   - Undergraduate in the Department of Electrical and Computer Engineering, Seoul National University
   - Email : yoon_g_kim@snu.ac.kr, yooongonkim@gmail.com
+  - github: [Yoongon-Kim](https://github.com/Yoongon-Kim)
+
+## Our Model
+Our model is based on [Feature-Image (FI) VarNet](https://www.nature.com/articles/s41598-024-59705-0). However, since the GPU VRAM is limited to 8GB, we discarded Block-wise Attention to save the memory for more cascades and deeper UNet inside the FI VarNet.
+
+We were able to conserve most of the high-level features which are discarded in the last conv layer of each cascade in E2E VarNet
 
 ## Reference
 [1] Zbontar, J.*, Knoll, F.*, Sriram, A.*, Murrell, T., Huang, Z., Muckley, M. J., ... & Lui, Y. W. (2018). fastMRI: An Open Dataset and Benchmarks for Accelerated MRI. arXiv preprint arXiv:1811.08839.
