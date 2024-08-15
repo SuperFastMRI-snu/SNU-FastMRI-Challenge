@@ -1,14 +1,19 @@
-# FastMRI_challenge
-2024 SNU FastMRI challenge
+# 2024 SNU FastMRI_challenge
+2024 SNU FastMRI challenge is a challenge based on Facebook AI's FastMRI challenge, but with different conditions. Below are the new conditions added by SNU FastMRI Challenge.
+* 8GB VRAM
+* Only multi-coil brain datasets
+* More types of acceleration
+  - Train dataset : 4X, 5X, 8X
+  - Valid dataset : 4X, 5X, 8X
+  - Leaderboard dataset : 5X, 9X
+  - Test dataset : (not revealed)
+    - The top teams on the leaderboard were tested on the test dataset to determine the final rankings.
+* Lesser datasets (4X : 118 people, 5X : 118 people, 8X : 120 people)
+* Can not use pretrained model
+* Limited inference time (3,000 seconds)
 
-## Branch
-- <a href = https://github.com/LISTatSNU/FastMRI_challenge/tree/2021_baby_unet>2021_baby_unet</a> [3]
-- <a href = https://github.com/LISTatSNU/FastMRI_challenge/tree/2022_baby_unet>2022_baby_unet</a> [3]
-- <a href = https://github.com/LISTatSNU/FastMRI_challenge/tree/2022_varnet>2022_varnet</a> [2]
-- <a href = https://github.com/LISTatSNU/FastMRI_challenge/tree/2023_baby_unet>2023_baby_unet</a> [3]
-- <a href = https://github.com/LISTatSNU/FastMRI_challenge/tree/2023_baby_varnet>2023_baby_varnet</a> [2]
-- <a href = https://github.com/LISTatSNU/FastMRI_challenge/tree/2024_baby_unet>2024_baby_unet</a> [3]
-- <a href = https://github.com/LISTatSNU/FastMRI_challenge/tree/2024_baby_varnet>2024_baby_varnet</a> [2]
+## What is fastMRI?
+FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience.
 
 ## Reference
 [1] Zbontar, J.*, Knoll, F.*, Sriram, A.*, Murrell, T., Huang, Z., Muckley, M. J., ... & Lui, Y. W. (2018). fastMRI: An Open Dataset and Benchmarks for Accelerated MRI. arXiv preprint arXiv:1811.08839.
