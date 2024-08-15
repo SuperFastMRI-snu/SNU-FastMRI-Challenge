@@ -33,17 +33,20 @@ We participated in the SNU FastMRI Challenge as a two-person team named SuperFas
   - github: [Yoongon-Kim](https://github.com/Yoongon-Kim)
 
 ## Our Model
-Our model used MoE strategy with three [Feature-Image (FI) VarNet](https://www.nature.com/articles/s41598-024-59705-0) sub-models. However, due to the 8GB limit on GPU VRAM, we discarded Block-wise Attention in each FI-VarNet sub-model to save memory for more cascades and deeper UNets within the sub-model.
+Our model uses MoE strategy with three [Feature-Image (FI) VarNet](https://www.nature.com/articles/s41598-024-59705-0) sub-models. However, due to the 8GB limit on GPU VRAM, we discarded Block-wise Attention in each FI-VarNet sub-model to save memory for more cascades and deeper UNets within the sub-model.
 
 ### MoE strategy
-We created submodels specialized for specific acceleration ranges to handle various types of acceleration. When an input is received, the model calculates its acceleration and forwards it to the submodel specialized for that acceleration. The result is then outputted.
+We created submodels specialized for specific acceleration ranges to handle various types of acceleration. When an input is received, the model calculates its acceleration and forwards it to the submodel specialized for that acceleration. The result is then outputted. If the input’s acceleration is not covered by the ranges of the submodels, it is forwarded to the model with the closest acceleration range.
 
 ![EntireModel](./img/EntireModel.png)
 
-Each FI-VarNet is trained on the same dataset but different masks were applied 
-
 ### Feature-Image VarNet
-We were able to conserve most of the high-level features which are discarded in the last conv layer of each cascade in E2E VarNet
+We were able to conserve most of the high-level features which are discarded in the last conv layer of each cascade in E2E VarNet.
+
+## Techniques
+list~~
+### MRAugment
+
 
 ## Reference
 [1] Zbontar, J.*, Knoll, F.*, Sriram, A.*, Murrell, T., Huang, Z., Muckley, M. J., ... & Lui, Y. W. (2018). fastMRI: An Open Dataset and Benchmarks for Accelerated MRI. arXiv preprint arXiv:1811.08839.
