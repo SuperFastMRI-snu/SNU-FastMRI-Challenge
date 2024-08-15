@@ -12,6 +12,8 @@
 * Can not use pretrained model
 * Limited inference time (3,000 seconds)
 
+AIRS Medical, which developed AIRS-Net and is currently leading the public leaderboard of the Facebook AI FastMRI Challenge, sponsored the competition.
+
 ## What is fastMRI?
 FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience.
 
