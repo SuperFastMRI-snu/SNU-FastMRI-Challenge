@@ -37,7 +37,7 @@ Our model used MoE strategy with three [Feature-Image (FI) VarNet](https://www.n
 
 ### MoE strategy
 We created submodels specialized for specific acceleration ranges to handle various types of acceleration. When an input is received, the model calculates its acceleration and forwards it to the submodel specialized for that acceleration. The result is then outputted.
-[EntireModel](./img/스크린샷 2024-08-15 오후 8.54.05.png)
+[EntireModel](./img/EntireModel.png)
 
 Each FI-VarNet is trained on the same dataset but different masks were applied 
 
