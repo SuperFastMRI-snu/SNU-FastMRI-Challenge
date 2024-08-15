@@ -41,6 +41,15 @@ We created submodels specialized for specific acceleration ranges to handle vari
 ![EntireModel](./img/EntireModel.png)
 
 ### Feature-Image VarNet
+E2E VarNet, the baseline model, is powerful, but some information was lost in the refinement modules. In the Unet of the refinement module, the tensor in the k-space temporarily gets transformed into the feature-space which contains high-level features, but is quickly converted back into the k-space in order to perform DC module update. The conversion from feature-space to k-space inevitably loses loses the high-level features. 
+
+
+This was basically because Data Consistency Module performs updates of tensor in the 2 channel k-space domain while, in the UNet, the channel number increases upto 32. 
+
+Most of the high-level features are discarded in the last conv layer of each cascade
+
+
+
 We were able to conserve most of the high-level features which are discarded in the last conv layer of each cascade in E2E VarNet.
 
 ## Techniques
