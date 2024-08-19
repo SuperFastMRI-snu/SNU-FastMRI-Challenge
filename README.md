@@ -60,7 +60,7 @@ sh train_89.sh
 sh train_67.sh
 ```
 
-Each line of code trains separate FIVarNet_n_att models for data with acc values of 4 and 5, 8 and 9, and 6 and 7, respectively. Each model is saved as 'model_acc##.pt' in the '../result/FIVarNet_submit/checkpoints_acc##' directory.
+Each line of code trains separate FIVarNet_n_att models for data with acc values of 4 and 5, 8 and 9, and 6 and 7, respectively. Each model is saved as `model_acc##.pt` in the `../result/FIVarNet_submit/checkpoints_acc##` directory.
 
 ### Evaluation commands(using leaderboard data)
 
