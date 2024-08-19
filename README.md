@@ -63,7 +63,21 @@ Since we used a Mixture of Experts (MoE) strategy that combines submodels specia
 
 ![DataModification3](./img/DataModification3.png)
 
-In addition, we anticipated that different masks would result in different data features, so we trained the model while applying two different acceleration masks to the same fully sampled k-space data.
+In addition, we anticipated that different masks would result in different data features, so we trained the model while applying two different acceleration masks to the same fully sampled k-space dataset.
+
+## Details
+
+### Gradient Accumulation
+Gradient accumulation allows larger batch sizes by accumulating gradients over several mini-batches. Therefore, we believed that gradient accumulation would be particularly effective in the SNU Fast MRI challenge due to the limited GPU memory available. Our batch size was four, with a mini-batch size of one.
+
+### Gradient Clipping
+We applied gradient clipping to prvent the gradients growing extremely large by limiting the gradients to a certain value(max norm). Our max norm was 1.0
+
+### LR Scheduler
+We utilized **ReduceLROnPlateau** to vaoid overshooting and improve convergence. This reduces the learning rate when the model's performance stops improving. We configured our scheduler to wait for five epochs without improvement in the model’s validation loss before reducing the learning rate by a factor of 0.1.
+
+### Optimizer
+We selected **RAdam** as our optimizer because it improves stability during the early stages of training by introducing a rectification term to the commonly used Adam optimizer.
 
 ## Reference
 [1] Zbontar, J.*, Knoll, F.*, Sriram, A.*, Murrell, T., Huang, Z., Muckley, M. J., ... & Lui, Y. W. (2018). fastMRI: An Open Dataset and Benchmarks for Accelerated MRI. arXiv preprint arXiv:1811.08839.
