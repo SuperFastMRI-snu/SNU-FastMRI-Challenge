@@ -58,7 +58,8 @@ Here are the techniques we applied to enhance the effectiveness of the model’s
 ![MRAugment](./img/MRAugment.png)
 MRAugment is a data augmentation technique for MRI reconstruction. It offers all the benefits of data augmentation to MRI reconstruction models. It can make it possible to achieve the effect of training with a larger dataset even with a small dataset. Through this, it improves generalization to unseen MRI scanners and prevents overfitting issues common in a small dataset settings.
 
-###
+### Data Modification
+
 
 ## Reference
 [1] Zbontar, J.*, Knoll, F.*, Sriram, A.*, Murrell, T., Huang, Z., Muckley, M. J., ... & Lui, Y. W. (2018). fastMRI: An Open Dataset and Benchmarks for Accelerated MRI. arXiv preprint arXiv:1811.08839.
