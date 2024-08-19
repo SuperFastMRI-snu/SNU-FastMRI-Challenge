@@ -102,7 +102,7 @@ We selected **RAdam** as our optimizer because it improves stability during the 
 
 [5] Fabian, Z., Heckel, R., & Soltanolkotabi, M. (2021). Data augmentation for deep learning based accelerated MRI reconstruction with limited data (arXiv:2106.14947). https://arxiv.org/abs/2106.14947
 
-[6] Weights & Biases. (2021, August 23). How to implement gradient accumulation in PyTorch. Weights & Biases. https://wandb.ai/wandb_fc/tips/reports/How-To-Implement-Gradient-Accumulation-in-PyTorch–VmlldzoyMjMwOTk5
+[6] Kozodoi, M. (2021, February 19). Gradient accumulation. Kozodoi. https://kozodoi.me/blog/20210219/gradient-accumulation
 
 [7] Pascanu, R., Mikolov, T., & Bengio, Y. (2013). On the difficulty of training recurrent neural networks. In Proceedings of the 30th International Conference on Machine Learning (ICML 2013) (pp. 1310-1318).
 
