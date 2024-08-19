@@ -52,6 +52,24 @@ Feature-Image (FI) VarNet resolves this problem by making DC module perform upda
 However, we abandoned Block-attention module in FI VarNet due to the 8GB limit on GPU VRAM. Block-attention module's role is to reducing computational complexity while enhancing the model’s ability to identify spatial locations of aliasing artifacts caused by Cartesian undersampling. After experimenting with various hyperparameters, we reached to a conclusion that getting more cascades and deeper UNets is way more efficient in training than maintaining Block-attention module. We believe that the reason block-wise attention did not improve the model’s performance was because the attention block consumed memory, reducing the size of the base model that needed to be maintained.
 
 ## How to run our model
+### **Training commands**
+
+```python
+sh train_45.sh
+sh train_89.sh
+sh train_67.sh
+```
+
+Each line of code trains separate FIVarNet_n_att models for data with acc values of 4 and 5, 8 and 9, and 6 and 7, respectively. Each model is saved as 'model_acc##.pt' in the '../result/FIVarNet_submit/checkpoints_acc##' directory.
+
+### **Evaluation commands**(using leaderboard data)
+
+```python
+sh leaderboard_eval.sh
+```
+
+When you run this code, it will evaluate the output from the model selected based on the acceleration factor of the mask in the given data.
+
 
 ### Train
 
