@@ -61,7 +61,7 @@ MRAugment is a data augmentation technique for MRI reconstruction. It offers all
 ### Data Modification
 Since we used a Mixture of Experts (MoE) strategy that combines submodels specialized for specific accelerations, we had to use data with specific accelerations exclusively when training each submodel. However, the challenge organizers provided only one acceleration mask per fully sampled data. As a result, if we used the dataset as it was, we had to use only a small portion of the dataset. To avoid this, we created new masks with various acceleration features, enabling the model to utilize the entire training dataset.
 
-![DataModification2](./img/DataModification2.png)
+![DataModification3](./img/DataModification3.png)
 
 In addition, we anticipated that different masks would result in different data features, so we trained the model while applying two different acceleration masks to the same fully sampled k-space data.
 
