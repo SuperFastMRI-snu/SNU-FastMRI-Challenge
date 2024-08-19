@@ -43,8 +43,8 @@ We created submodels specialized for specific acceleration ranges to handle vari
 ### Feature-Image VarNet
 E2E VarNet, the baseline model, is powerful, but some information was lost in the refinement module. This is basically because the data consistency (DC) module performs updates of tensor in the 2 channel k-space domain while, in the refinement module, the updates are performed in the feature-space where the tensor's channel number increases upto 32. In the feature-space, we can gain high-level features, but most of them are lost in the process of converting the tensor back into the k-space in order to perform DC module update.
 
-![FI VarNet 1](./img/FI VarNet 1.png)
-![FI VarNet 2](./img/FI VarNet 2.png)
+![FIVarNet1](./img/FIVarNet1.png)
+![FIVarNet2](./img/FIVarNet2.png)
 
 Feature-Image (FI) VarNet resolves this problem by making DC module perform updates of tensor in the feature-space rather than in k-space. Therefore, the tensor retains a large number of feature channels throughout the network’s cascades. The high-level features which is lost in E2EVarNet's refinement modules are now preserved in FI VarNet.
 
