@@ -53,8 +53,10 @@ However, we abandoned Block-attention module in FI VarNet due to the 8GB limit o
 
 ## Techniques
 Here are the techniques we applied to enhance the effectiveness of the model’s training.
+
 ### MRAugment
 MRAugment is a data augmentation technique for MRI reconstruction. It offers all the benefits of data augmentation to MRI reconstruction models. It can make it possible to achieve the effect of training with a larger dataset even with a small dataset. Through this, it improves generalization to unseen MRI scanners and prevents overfitting issues common in a small dataset settings.
+
 ###
 
 ## Reference
