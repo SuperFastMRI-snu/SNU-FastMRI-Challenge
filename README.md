@@ -97,3 +97,15 @@ We selected **RAdam** as our optimizer because it improves stability during the 
 [2] Sriram, A.*, Zbontar, J.*, Murrell, T., Defazio, A., Zitnick, C. L., Yakubova, N., ... & Johnson, P. (2020). End-to-End Variational Networks for Accelerated MRI Reconstruction. In MICCAI, pages 64-73.
 
 [3] Ronneberger, O., Fischer, P., & Brox, T. (2015, October). U-net: Convolutional networks for biomedical image segmentation. In International Conference on Medical image computing and computer-assisted intervention (pp. 234-241). Springer, Cham.
+
+[4] Giannakopoulos, I. I., Muckley, M. J., Kim, J., et al. (2024). Accelerated MRI reconstructions via variational network and feature domain learning. Scientific Reports, 14(1), 10991. https://doi.org/10.1038/s41598-024-59705-0
+
+[5] Fabian, Z., Heckel, R., & Soltanolkotabi, M. (2021). Data augmentation for deep learning based accelerated MRI reconstruction with limited data (arXiv:2106.14947). https://arxiv.org/abs/2106.14947
+
+[6] Weights & Biases. (2021, August 23). How to implement gradient accumulation in PyTorch. Weights & Biases. https://wandb.ai/wandb_fc/tips/reports/How-To-Implement-Gradient-Accumulation-in-PyTorch–VmlldzoyMjMwOTk5
+
+[7] Pascanu, R., Mikolov, T., & Bengio, Y. (2013). On the difficulty of training recurrent neural networks. In Proceedings of the 30th International Conference on Machine Learning (ICML 2013) (pp. 1310-1318).
+
+[8] PyTorch. (n.d.). torch.optim.lr_scheduler.ReduceLROnPlateau. Retrieved August 19, 2024, from https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.ReduceLROnPlateau.html
+
+[9] PyTorch. (n.d.). torch.optim.RAdam. Retrieved August 19, 2024, from https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html
