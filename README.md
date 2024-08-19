@@ -20,7 +20,7 @@ You can check SNU FastMRI challenge's baseline models and codes [here](https://g
 FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience.
 
 ## SuperFastMRI team
-We participated in the SNU FastMRI Challenge as a two-person team named SuperFastMRI.
+We participated in the 2024 SNU FastMRI Challenge as a two-person team named SuperFastMRI.
 
 ### Team Members
 * Dongwook Kho
@@ -41,19 +41,11 @@ We created submodels specialized for specific acceleration ranges to handle vari
 ![EntireModel](./img/EntireModel.png)
 
 ### Feature-Image VarNet
-E2E VarNet, the baseline model, is powerful, but some information was lost in the refinement module. This is basically because the data consistency module performs updates of tensor in the 2 channel k-space domain while, in the UNet, the tensor's channel number increases upto 32. 
+E2E VarNet, the baseline model, is powerful, but some information was lost in the refinement module. This is basically because the data consistency (DC) module performs updates of tensor in the 2 channel k-space domain while, in the refinement module, the updates are performed in the feature-space where the tensor's channel number increases upto 32. In the feature-space, we can gain high-level features, but most of them are lost in the process of converting the tensor back into the k-space in order to perform DC module update.
 
+Feature-Image (FI) VarNet resolves this problem by making DC module perform updates of tensor in the feature-space rather than in k-space. Therefore, the tensor retains a large number of feature channels throughout the network’s cascades. The high-level features which is lost in E2EVarNet's refinement modules are now preserved in FI VarNet.
 
-In the Unet of the refinement module, the tensor in the k-space temporarily gets transformed into the feature-space, which contains high-level features, but is quickly converted back into the k-space in order to perform DC module update. The conversion from feature-space to k-space inevitably entails the loss of most high-level features. 
-
-
-This was basically because Data Consistency Module performs updates of tensor in the 2 channel k-space domain while, in the UNet, the tensor's channel number increases upto 32. 
-
-Most of the high-level features are discarded in the last conv layer of each cascade
-
-
-
-We were able to conserve most of the high-level features which are discarded in the last conv layer of each cascade in E2E VarNet.
+However, we abandoned Block-attention module due to the 8GB limit on GPU VRAM. Block-attention module's role is to reducing computational complexity while enhancing the model’s ability to identify spatial locations of aliasing artifacts caused by Cartesian undersampling. After experimenting with various hyperparameters, we reached to a conclusion that getting more cascades and deeper UNets is way more efficient in training than maintaining Block-attention module. We believe that the reason block-wise attention did not improve the model’s performance was because the attention block consumed memory, reducing the size of the base model that needed to be maintained.
 
 ## Techniques
 list~~
