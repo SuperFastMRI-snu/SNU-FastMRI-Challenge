@@ -65,6 +65,12 @@ Since we used a Mixture of Experts (MoE) strategy that combines submodels specia
 
 In addition, we anticipated that different masks would result in different data features, so we trained the model while applying two different acceleration masks to the same fully sampled k-space dataset.
 
+## Results
+
+### Train Loss & Valid Loss
+
+### Evaluation Loss
+
 ## Details
 
 ### Gradient Accumulation
