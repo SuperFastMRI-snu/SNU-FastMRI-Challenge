@@ -51,6 +51,12 @@ Feature-Image (FI) VarNet resolves this problem by making DC module perform upda
 
 However, we abandoned Block-attention module in FI VarNet due to the 8GB limit on GPU VRAM. Block-attention module's role is to reducing computational complexity while enhancing the model’s ability to identify spatial locations of aliasing artifacts caused by Cartesian undersampling. After experimenting with various hyperparameters, we reached to a conclusion that getting more cascades and deeper UNets is way more efficient in training than maintaining Block-attention module. We believe that the reason block-wise attention did not improve the model’s performance was because the attention block consumed memory, reducing the size of the base model that needed to be maintained.
 
+## Results
+
+### Train Loss & Valid Loss
+
+### Evaluation Loss
+
 ## Techniques
 Here are the techniques we applied to enhance the effectiveness of the model’s training.
 
@@ -64,12 +70,6 @@ Since we used a Mixture of Experts (MoE) strategy that combines submodels specia
 ![DataModification3](./img/DataModification3.png)
 
 In addition, we anticipated that different masks would result in different data features, so we trained the model while applying two different acceleration masks to the same fully sampled k-space dataset.
-
-## Results
-
-### Train Loss & Valid Loss
-
-### Evaluation Loss
 
 ## Details
 
