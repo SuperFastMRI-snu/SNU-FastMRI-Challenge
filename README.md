@@ -1,5 +1,5 @@
 # 2024 SNU FastMRI_challenge
-[2024 SNU FastMRI challenge](https://fastmri.snu.ac.kr/) is a challenge based on [Facebook AI's FastMRI challenge](https://web.archive.org/web/20230324102125mp_/https://fastmri.org/leaderboards), but with different conditions. Below are the new conditions added by SNU FastMRI Challenge.
+[2024 SNU FastMRI challenge](https://fastmri.snu.ac.kr/) is a challenge based on [Facebook AI's FastMRI challenge](https://web.archive.org/web/20230324102125mp_/https://fastmri.org/leaderboards), but with different conditions(서울대학교의 이종호 교수님 랩에서 열었다고 언급해야 함). Below are the new conditions added by SNU FastMRI Challenge.
 * 8GB VRAM
 * Only multi-coil brain datasets
 * More types of acceleration
