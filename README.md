@@ -41,7 +41,7 @@ Our model uses MoE strategy with four [Feature-Image (FI) VarNet](https://www.na
 We created submodels specialized for specific acceleration ranges to handle different types of input accelerations. When an input is received, the model calculates its acceleration and forwards it to the submodel specialized for that acceleration. The result is then outputted. If the input’s acceleration is not covered by the ranges of the submodels, it is forwarded to the model with the closest acceleration range.
 
 ### Ensemble
-Each submodel is created through ensemble techniques. For the ensemble, during the training of a submodel, we selected the networks from the epochs with the lowest and the second-lowest valid loss and combined them using an averaging method. Through various experiments, we confirmed that this ensemble approach yielded strong results in the leaderboard evaluation. Each submodel follows the structure shown in the image below.
+Each submodel is created through ensemble techniques. We selected two networks with the lowest and the second-lowest valid loss and combined them using an averaging method. Through numerous experiments, we confirmed that this ensemble approach yielded strong results in the leaderboard evaluation. Each submodel follows the structure shown in the image below.
 
 ![Ensemble2](./img/Ensemble2.png)
 
