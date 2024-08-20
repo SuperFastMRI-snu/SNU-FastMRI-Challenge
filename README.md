@@ -123,7 +123,7 @@ In addition, we anticipated that different masks would result in different data 
 Gradient accumulation allows larger batch sizes by accumulating gradients over several mini-batches. Therefore, we believed that gradient accumulation would be particularly effective in the SNU Fast MRI challenge due to the limited GPU memory available. Our batch size was four, with a mini-batch size of one.
 
 ### Gradient Clipping
-We applied gradient clipping to prvent the gradients growing extremely large by limiting the gradients to a certain value(max norm). Our max norm was 1.0
+We applied gradient clipping to prevent the gradients growing extremely large by limiting the gradients to a certain value(max norm). Our max norm was 1.0
 
 ### LR Scheduler
 We utilized **ReduceLROnPlateau** to vaoid overshooting and improve convergence. This reduces the learning rate when the model's performance stops improving. We configured our scheduler to wait for five epochs without improvement in the model’s validation loss before reducing the learning rate by a factor of 0.1.
