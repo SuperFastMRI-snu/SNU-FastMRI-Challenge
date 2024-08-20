@@ -103,7 +103,10 @@ sh leaderboard_eval.sh
 * Submodel for acc 6 and 7
 
 * Submodel for acc 8 and 9
-
+  * Train loss
+![train_loss_89](./img/train_loss_89.png)
+  * Valid loss
+![val_loss_89](./img/val_loss_89.png)
 * Submodel for acc 10 and 11
 
 ### Evaluation Loss
