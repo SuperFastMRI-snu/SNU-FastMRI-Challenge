@@ -58,7 +58,7 @@ However, we abandoned Block-attention module in FI VarNet due to the 8GB limit o
 
 ## How to Run Our Model
 
-### Structure of the Files
+### File System
 ![FileStructure2](./img/FileStructure2.png)
 
 The `result` folder stores the models, the validation loss, and reconstructed images obtained from the models.
