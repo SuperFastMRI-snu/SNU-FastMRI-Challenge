@@ -102,7 +102,7 @@ sh leaderboard_eval.sh
 ### Evaluation Loss
 
 ## Techniques
-Here are the techniques we applied to enhance the effectiveness of the model’s training.
+Here are techniques we applied to enhance the effectiveness of our model’s training.
 
 ### MRAugment
 ![MRAugment](./img/MRAugment.png)
