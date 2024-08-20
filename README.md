@@ -20,7 +20,7 @@ You can check SNU FastMRI challenge's baseline models and codes [here](https://g
 FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience. However, its resolution is very low, so deep learning technology is widely applied to enhance the resolution of FastMRI. In this challenge, we aim to develop a model that can reconstruct images from undersampled measurements in FastMRI.
 
 ## SuperFastMRI team
-We participated in the 2024 SNU FastMRI Challenge as a two-person team named SuperFastMRI.
+We participated in the 2024 SNU FastMRI Challenge as a two-person team named **SuperFastMRI**.
 
 ### Team Members
 * Dongwook Kho
