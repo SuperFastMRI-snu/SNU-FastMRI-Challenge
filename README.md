@@ -61,7 +61,7 @@ However, we abandoned Block-attention module in FI VarNet due to the 8GB limit o
 ### Structure of the Files
 ![FileStructure2](./img/FileStructure2.png)
 
-The `result` folder stores the models, the validation loss, and reconstructed images obtained from the models. We have already included pretrained models and their validation loss in the `result` folder for evaluation in the competition.
+The `result` folder stores the models, the validation loss, and reconstructed images obtained from the models.
 
 The `Data` folder stores the training dataset, validation dataset, and leaderboard evaluation dataset.
 
