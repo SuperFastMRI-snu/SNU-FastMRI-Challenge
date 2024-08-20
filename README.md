@@ -46,7 +46,7 @@ Each submodel is created through ensemble techniques. We selected two networks w
 ![Ensemble2](./img/Ensemble2.png)
 
 ### Feature-Image VarNet
-E2E VarNet, the baseline model, is powerful, but some information is lost in the refinement module. This is basically because the data consistency (DC) module performs updates of tensor in the 2 channel k-space domain while, in the refinement module, the updates are performed in the feature-space where the tensor's channel number increases upto 32. In the feature-space, we can gain high-level features, but most of them are lost in the process of converting the tensor back into the k-space in order to perform DC module update.
+E2E VarNet, the baseline model, is powerful, but some information is lost in the refinement module. This is basically because the data consistency (DC) module performs updates of a tensor in the 2 channel k-space domain while, in the refinement module, the updates are performed in the feature-space where the tensor's channel number increases upto 32. In the feature-space, we can gain high-level features, but most of them are lost in the process of converting the tensor back into the k-space in order to perform DC module update.
 
 ![FIVarNet1](./img/FIVarNet1.png)
 ![FIVarNet3](./img/FIVarNet3.png)
