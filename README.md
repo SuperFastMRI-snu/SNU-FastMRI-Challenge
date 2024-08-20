@@ -43,7 +43,7 @@ We created submodels specialized for specific acceleration ranges to handle diff
 ### Ensemble
 Each submodel is created through ensemble techniques. For the ensemble, during the training of a submodel, we selected the networks from the epochs with the lowest and the second-lowest valid loss and combined them using an averaging method. Through various experiments, we confirmed that this ensemble approach yielded strong results in the leaderboard evaluation. Each submodel follows the structure shown in the image below.
 
-![Ensemble](./img/Ensemble.png)
+![Ensemble2](./img/Ensemble2.png)
 
 ### Feature-Image VarNet
 E2E VarNet, the baseline model, is powerful, but some information is lost in the refinement module. This is basically because the data consistency (DC) module performs updates of tensor in the 2 channel k-space domain while, in the refinement module, the updates are performed in the feature-space where the tensor's channel number increases upto 32. In the feature-space, we can gain high-level features, but most of them are lost in the process of converting the tensor back into the k-space in order to perform DC module update.
