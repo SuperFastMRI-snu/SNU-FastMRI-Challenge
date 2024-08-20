@@ -59,7 +59,7 @@ However, we abandoned Block-attention module in FI VarNet due to the 8GB limit o
 ## How to Run Our Model
 
 ### Structure of the Files
-
+![FileStructure](./img/FileStructure.png)
 
 ### Cloning Our Repository
 ```cmd
