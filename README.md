@@ -98,6 +98,13 @@ sh leaderboard_eval.sh
 ## Results
 
 ### Train Loss & Valid Loss
+* Submodel for acc 4 and 5
+
+* Submodel for acc 6 and 7
+
+* Submodel for acc 8 and 9
+
+* Submodel for acc 10 and 11
 
 ### Evaluation Loss
 
