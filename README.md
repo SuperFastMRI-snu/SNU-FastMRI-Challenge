@@ -14,7 +14,7 @@
 
 You can check SNU FastMRI challenge's baseline models and codes [here](https://github.com/LISTatSNU/FastMRI_challenge). [E2E VarNet](https://arxiv.org/abs/2004.06688) and UNet were given as baseline models.
 
-[AIRS Medical](https://airsmed.com/en/), which developed AIRS-Net and has won the Facebook AI FastMRI Challenge, and [Klim Ventures](https://www.klimvc.com/) sponsored the challenge.
+[AIRS Medical](https://airsmed.com/en/), which developed AIRS-Net and won the Facebook AI FastMRI Challenge, along with [Klim Ventures](https://www.klimvc.com/), sponsored the challenge.
 
 ## What is FastMRI?
 FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience. However, its resolution is very low, so deep learning technology is widely applied to enhance the resolution of FastMRI. In this challenge, we aim to develop a model that can reconstruct images from undersampled measurements in FastMRI.
@@ -33,7 +33,7 @@ We participated in the 2024 SNU FastMRI Challenge as a two-person team named **S
   - github: [Yoongon-Kim](https://github.com/Yoongon-Kim)
 
 ## Our Model
-Our model uses MoE strategy with three [Feature-Image (FI) VarNet](https://www.nature.com/articles/s41598-024-59705-0) sub-models. However, due to the 8GB limit on GPU VRAM, we discarded Block-wise Attention in each FI-VarNet sub-model to save memory for more cascades and deeper UNets within the sub-model.
+Our model uses MoE strategy with four [Feature-Image (FI) VarNet](https://www.nature.com/articles/s41598-024-59705-0) sub-models. However, due to the 8GB limit on GPU VRAM, we discarded Block-wise Attention in each FI-VarNet sub-model to save memory for more cascades and deeper UNets within the sub-model.
 
 ![EntireModel3](./img/EntireModel3.png)
 
