@@ -8,7 +8,7 @@
   - Leaderboard dataset : 5X, 9X
   - Test dataset : (not revealed)
     - The top teams on the leaderboard will be tested on the test dataset to determine the final rankings.
-* Lesser training datasets (4X : 118 people, 5X : 118 people, 8X : 120 people)
+* Smaller training dataset (4X : 118 people, 5X : 118 people, 8X : 120 people)
 * Can not use pretrained model
 * Limited inference time (3,000 seconds)
 
