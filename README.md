@@ -16,7 +16,7 @@ You can check SNU FastMRI challenge's baseline models and codes [here](https://g
 
 [AIRS Medical](https://airsmed.com/en/), which developed AIRS-Net and is currently leading the public leaderboard of the Facebook AI FastMRI Challenge, and [Klim Ventures](https://www.klimvc.com/) sponsored the challenge.
 
-## What is fastMRI?
+## What is FastMRI?
 FastMRI is accelerating the speed of MRI scanning by acquiring fewer measurements. This may reduce medical costs per patient and improve patients' experience.
 
 ## SuperFastMRI team
@@ -37,7 +37,7 @@ Our model uses MoE strategy with three [Feature-Image (FI) VarNet](https://www.n
 
 ![EntireModel2](./img/EntireModel2.png)
 
-### MoE strategy
+### MoE Strategy
 We created submodels specialized for specific acceleration ranges to handle different types of input accelerations. When an input is received, the model calculates its acceleration and forwards it to the submodel specialized for that acceleration. The result is then outputted. If the input’s acceleration is not covered by the ranges of the submodels, it is forwarded to the model with the closest acceleration range.
 
 ### Ensemble
@@ -56,9 +56,9 @@ Feature-Image (FI) VarNet resolves this problem by making DC module perform upda
 
 However, we abandoned Block-attention module in FI VarNet due to the 8GB limit on GPU VRAM. Block-attention module's role is to reducing computational complexity while enhancing the model’s ability to identify spatial locations of aliasing artifacts caused by Cartesian undersampling. After experimenting with various hyperparameters, we reached to a conclusion that getting more cascades and deeper UNets is way more efficient in training than maintaining Block-attention module. We believe that the reason block-wise attention did not improve the model’s performance was because the attention block consumed memory, reducing the size of the base model that needed to be maintained.
 
-## How to run our model
+## How to Run Our Model
 
-### Cloning our repository
+### Cloning Our Repository
 ```cmd
 git clone https://github.com/superfastmri/fastMRI_main.git
 cd /root/fastMRI_main
@@ -67,7 +67,7 @@ cd /root/fastMRI_main
 
 ### 
 
-### Training commands
+### Training Commands
 
 ```python
 sh train_45.sh
@@ -77,7 +77,7 @@ sh train_67.sh
 
 Each line of code trains separate FIVarNet_n_att models for data with acc values of 4 and 5, 8 and 9, and 6 and 7, respectively. Each model is saved as `model_acc##.pt` in the `../result/FIVarNet_submit/checkpoints_acc##` directory.
 
-### Evaluation commands (using leaderboard data)
+### Evaluation Commands (using leaderboard data)
 
 ```python
 sh leaderboard_eval.sh
@@ -96,9 +96,11 @@ Here are the techniques we applied to enhance the effectiveness of the model’s
 
 ### MRAugment
 ![MRAugment](./img/MRAugment.png)
-[MRAugment](https://arxiv.org/abs/2106.14947) is a data augmentation technique for MRI reconstruction. It offers all the benefits of data augmentation to MRI reconstruction models. It can make it possible to achieve the effect of training with a larger dataset even with a small dataset. Through this, it improves generalization to unseen MRI scanners and prevents overfitting issues common in a small dataset settings.
+[MRAugment](https://arxiv.org/abs/2106.14947) is a data augmentation technique for MRI reconstruction that operates in the image domain. It performs two types of augmentations: pixel-preserving augmentations, which include flipping, translation by integer pixel values, and rotation; and general affine augmentations, which include translation by arbitrary coordinates, arbitrary rotations, scaling, and shearing.
 
-### Data Augmentation
+It offers all the benefits of data augmentation to MRI reconstruction models. It can make it possible to achieve the effect of training with a larger dataset even with a small dataset. Through this, it improves generalization to unseen MRI scanners and prevents overfitting issues common in a small dataset settings.
+
+### Data Augmentation through Creating New Masks
 Since we used a Mixture of Experts (MoE) strategy that combines submodels specialized for specific accelerations, we had to use data with specific accelerations exclusively when training each submodel. However, the challenge organizers provided only one acceleration mask per fully sampled data. As a result, if we used the dataset as it was, we had to use only a small portion of the dataset. To avoid this, we created new masks with various acceleration features, enabling the model to utilize the entire training dataset.
 
 ![DataAugmentation2](./img/DataAugmentation2.png)
