@@ -79,6 +79,7 @@ cd /root/fastMRI_main
 sh train_45.sh
 sh train_89.sh
 sh train_67.sh
+sh train_1011.sh
 ```
 
 Each line of code trains a FIVarNet specialized for a specific acc range. For example, the first FIVarNet is trained for acc 4 and 5. Each FIVarNet is saved as `model_acc##.pt` in the `root/result/FIVarNet_submit/checkpoints_acc##` directory.
