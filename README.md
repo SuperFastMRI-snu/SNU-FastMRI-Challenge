@@ -45,6 +45,8 @@ Each submodel is created through ensemble techniques. We selected two networks w
 
 ![Ensemble2](./img/Ensemble2.png)
 
+Eventually we combined ~~~~~
+
 ### Feature-Image VarNet
 E2E VarNet, the baseline model, is powerful, but some information is lost in the refinement module. This is basically because the data consistency (DC) module performs updates of a tensor in the 2 channel k-space domain while, in the refinement module, the updates are performed in the feature-space where the tensor's channel number increases upto 32. In the feature-space, we can gain high-level features, but most of them are lost in the process of converting the tensor back into the k-space in order to perform DC module update.
 
@@ -114,7 +116,14 @@ sh leaderboard_eval.sh
 
 * Submodel for acc 10 and 11
 
-### Evaluation Loss
+### Leaderboard Evaluation Loss
+* Submodel for acc 4 and 5
+
+* Submodel for acc 6 and 7
+
+* Submodel for acc8 and 9
+
+* Submodel for acc 10 and 11
 
 
 ## Techniques
