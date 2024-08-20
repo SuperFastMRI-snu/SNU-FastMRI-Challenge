@@ -103,12 +103,10 @@ sh leaderboard_eval.sh
 * Submodel for acc 6 and 7
 
 * Submodel for acc 8 and 9
-  * Train loss
- 
-<img src="https://raw.githubusercontent.com/superfastmri/fastMRI_main/main/img/train_loss_89.png"  width="600" height="350"/>
-![train_loss_89](./img/train_loss_89.png)
-  * Valid loss
-![val_loss_89](./img/val_loss_89.png)
+
+  <img src="https://raw.githubusercontent.com/superfastmri/fastMRI_main/main/img/train_loss_89.png"  width="400" height="234"/>
+  <img src="https://raw.githubusercontent.com/superfastmri/fastMRI_main/main/img/val_loss_45.png"  width="400" height="234"/>
+
 * Submodel for acc 10 and 11
 
 ### Evaluation Loss
