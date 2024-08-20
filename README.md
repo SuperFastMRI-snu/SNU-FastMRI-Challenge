@@ -58,6 +58,9 @@ However, we abandoned Block-attention module in FI VarNet due to the 8GB limit o
 
 ## How to Run Our Model
 
+### Structure of the Files
+
+
 ### Cloning Our Repository
 ```cmd
 git clone https://github.com/superfastmri/fastMRI_main.git
@@ -65,7 +68,8 @@ cd /root/fastMRI_main
 ```
 `/root` is where you have cloned our repository.
 
-### 
+
+
 
 ### Training Commands
 
