@@ -53,7 +53,7 @@ We created the submodels by assembling the networks as follows.
 * Submodel for acc 6 and 7
     * epoch ## + epoch ##
 
-* Submodel for acc8 and 9
+* Submodel for acc 8 and 9
     * epoch 23 + epoch 25
 
 * Submodel for acc 10 and 11
