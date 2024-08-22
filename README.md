@@ -91,8 +91,8 @@ cd /root/fastMRI_main
 
 ```python
 sh train_45.sh
-sh train_89.sh
 sh train_67.sh
+sh train_89.sh
 sh train_1011.sh
 ```
 
