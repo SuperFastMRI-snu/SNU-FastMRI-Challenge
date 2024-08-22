@@ -51,13 +51,13 @@ We created the submodels by assembling the networks as follows.
     * model trained until epoch 24 + model trained until epoch 25
 
 * Submodel for acc 6 and 7
-    * epoch ## + epoch ##
+    * didn't applied ensemble due to limited time
 
 * Submodel for acc 8 and 9
     * epoch 23 + epoch 25
 
 * Submodel for acc 10 and 11
-    * epoch ## + epoch ##
+    * didn't applied ensemble due to limited time
 
 ### Feature-Image VarNet
 E2E VarNet, the baseline model, is powerful, but some information is lost in the refinement module. This is basically because the data consistency (DC) module performs updates of a tensor in the 2 channel k-space domain while, in the refinement module, the updates are performed in the feature-space where the tensor's channel number increases upto 32. In the feature-space, we can gain high-level features, but most of them are lost in the process of converting the tensor back into the k-space in order to perform DC module update.
