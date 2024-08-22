@@ -111,23 +111,6 @@ sh leaderboard_eval.sh
 
 ## Results
 
-### Train Loss & Valid Loss
-* Submodel for acc 4 and 5
-  * final train loss: 0.0213
-  * final val loss: 0.0288
-   <img src="https://raw.githubusercontent.com/superfastmri/fastMRI_main/main/img/train_loss_45.png"  width="400" height="234"/>
-   <img src="https://raw.githubusercontent.com/superfastmri/fastMRI_main/main/img/val_loss_45.png"  width="400" height="234"/>
-
-* Submodel for acc 6 and 7
-
-* Submodel for acc 8 and 9
-  * final train loss: 0.0354
-  * final val loss: 0.0467
-  <img src="https://raw.githubusercontent.com/superfastmri/fastMRI_main/main/img/train_loss_89.png"  width="400" height="234"/>
-  <img src="https://raw.githubusercontent.com/superfastmri/fastMRI_main/main/img/val_loss_89.png"  width="400" height="234"/>
-
-* Submodel for acc 10 and 11
-
 ### Leaderboard Evaluation Loss
 ```
 Leaderboard SSIM : 0.9797
