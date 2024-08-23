@@ -7,4 +7,4 @@ python reconstruct.py \
   --chans 24 \
   --sens_chans 4 \
   --unet_chans 19 \
-  --input-key 'kspace' \
+  --input_key 'kspace'
