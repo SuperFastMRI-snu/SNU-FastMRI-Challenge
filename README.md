@@ -113,10 +113,10 @@ sh leaderboard_eval.sh
 
 ### Leaderboard Evaluation Loss
 ```
-Leaderboard SSIM : 0.9797
+Leaderboard SSIM : 0.9804
 ========== Details ==========
 Leaderboard SSIM (public): 0.9867
-Leaderboard SSIM (private): 0.9726
+Leaderboard SSIM (private): 0.9741
 ```
 
 
