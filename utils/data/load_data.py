@@ -28,10 +28,9 @@ class SliceData(Dataset):
 
         if not forward:
             # mask list 만들기
-            mask_acc = args.acc # [4, 5, 6, 7, 8, 9]
+            mask_acc = args.acc 
             mask_list = {}
 
-            # data에서 중요한 것은 [-2] 위치의 원소. mask 벡터의 크기가 바로 [-2] 원소이다.
             data_list = [torch.randn(16, 768, 396, 2), torch.randn(16, 396, 768, 2), torch.randn(4, 768, 392, 2)]
             for acc in mask_acc:
               for data in data_list:
@@ -108,7 +107,7 @@ class SliceData(Dataset):
             input = torch.from_numpy(input)
             input = torch.stack((input.real, input.imag), dim=-1)
 
-            # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기 / random mask를 위한 p 설정
+            # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기 
             target = None
             if self.DataAugmentor != None:
               input, target = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.

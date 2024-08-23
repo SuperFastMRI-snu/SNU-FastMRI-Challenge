@@ -9,9 +9,8 @@ import h5py
 import numpy as np
 import torch
 import random
-from pathlib import Path
 
-def save_reconstructions(reconstructions, out_dir, epoch=None, targets=None, inputs=None):
+def save_reconstructions(reconstructions, out_dir, targets=None, inputs=None):
     """
     Saves the reconstructions from a model into h5 files that is appropriate for submission
     to the leaderboard.
@@ -23,15 +22,9 @@ def save_reconstructions(reconstructions, out_dir, epoch=None, targets=None, inp
             should be saved.
         target (np.array): target array
     """
-    # 모든 epoch마다 recon 따로 저장
-    if epoch!=None:
-      out_dir_epoch =  Path(str(out_dir) + '/recon' + str(epoch))
-    else:
-      out_dir_epoch = out_dir
-
-    out_dir_epoch.mkdir(exist_ok=True, parents=True)
+    out_dir.mkdir(exist_ok=True, parents=True)
     for fname, recons in reconstructions.items():
-        with h5py.File(out_dir_epoch / fname, 'w') as f:
+        with h5py.File(out_dir / fname, 'w') as f:
             f.create_dataset('reconstruction', data=recons)
             if targets is not None:
                 f.create_dataset('target', data=targets[fname])

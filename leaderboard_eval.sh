@@ -1,3 +1,5 @@
 python leaderboard_eval.py \
+  -g 0 \
   -lp '/home/Data/leaderboard' \
-  -yp '/root/fastmri_code/test/result/test_Varnet/reconstructions_leaderboard'
+  -yp '../result/FIVarNet_submit/reconstructions_leaderboard/'
+  -key 'reconstruction'

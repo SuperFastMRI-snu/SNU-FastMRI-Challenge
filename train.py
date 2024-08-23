@@ -6,7 +6,7 @@ from pathlib import Path
 
 if os.getcwd() + '/utils/model/' not in sys.path:
     sys.path.insert(1, os.getcwd() + '/utils/model/')
-from utils.learning.train_part_no_wandb import train
+from utils.learning.train_part import train
 
 if os.getcwd() + '/utils/common/' not in sys.path:
     sys.path.insert(1, os.getcwd() + '/utils/common/')
@@ -18,27 +18,26 @@ def parse():
     parser.add_argument('-g', '--GPU-NUM', type=int, default=0, help='GPU number to allocate')
     parser.add_argument('-b', '--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('-a', '--acc-steps', type=int, default=4, help='Steps of Gradient Accumulation')
-    parser.add_argument('-e', '--num-epochs', type=int, default=15, help='Number of epochs')
+    parser.add_argument('-e', '--num-epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=5, help='patience of ReduceLROnPlateau')
     parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
     parser.add_argument('-m', '--max-norm', type=float, default=1.0, help='max_norm of gradient clipping')
     parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
-    parser.add_argument('-i', '--save-itr-interval', type=int, default=100, help='itr interval of model save')
-    parser.add_argument('-n', '--net-name', type=Path, default='test_varnet', help='Name of network')
-    parser.add_argument('-t', '--data-path-train', type=Path, default='/content/drive/MyDrive/Data/val', help='Directory of train data')
-    parser.add_argument('-v', '--data-path-val', type=Path, default='/content/drive/MyDrive/Data/val', help='Directory of validation data')
+    parser.add_argument('-n', '--net-name', type=Path, default='FIVarNet_submit', help='Name of network')
+    parser.add_argument('-t', '--data-path-train', type=Path, default='/home/Data/train', help='Directory of train data')
+    parser.add_argument('-v', '--data-path-val', type=Path, default='/home/Data/val', help='Directory of validation data')
     
     parser.add_argument('--cascade', type=int, default=3, help='Number of cascades | Should be less than 12') ## important hyperparameter
-    parser.add_argument('--chans', type=int, default=9, help='Number of channels for feature-domain | 18 in original varnet') ## important hyperparameter
+    parser.add_argument('--chans', type=int, default=24, help='Number of channels for feature-domain | 18 in original varnet') ## important hyperparameter
     parser.add_argument('--sens_chans', type=int, default=4, help='Number of channels for sensitivity map U-Net | 8 in original varnet') ## important hyperparameter
-    parser.add_argument('--unet_chans', type=int, default=32, help ='Number of channels for cascade U-Net') ## important hyperparameter
+    parser.add_argument('--unet_chans', type=int, default=19, help ='Number of channels for cascade U-Net') ## important hyperparameter
     parser.add_argument('--input-key', type=str, default='kspace', help='Name of input key')
     parser.add_argument('--target-key', type=str, default='image_label', help='Name of target key')
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')
     parser.add_argument('--seed', type=int, default=430, help='Fix random seed')
 
-    parser.add_argument('--acc', type=int, default=[4, 5], help='accelerations on which the model will be trained')
+    parser.add_argument('--acc', type=int, default=[4, 5], nargs="+", help='accelerations on which the model will be trained')
 
     add_augmentation_specific_args(parser)
     args = parser.parse_args()
@@ -103,8 +102,8 @@ if __name__ == '__main__':
     if args.seed is not None:
         seed_fix(args.seed)
 
-    args.exp_dir = '../result' / args.net_name / 'checkpoints'
-    args.val_dir = '../result' / args.net_name / 'reconstructions_val'
+    args.exp_dir = '../result' / args.net_name / f'checkpoints_acc{args.acc[0]}{args.acc[1]}'
+    args.val_dir = '../result' / args.net_name / f'reconstructions_val_acc{args.acc[0]}{args.acc[1]}'
     args.main_dir = '../result' / args.net_name / __file__
     args.val_loss_dir = '../result' / args.net_name
 

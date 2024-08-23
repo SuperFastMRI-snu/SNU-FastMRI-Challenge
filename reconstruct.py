@@ -13,12 +13,13 @@ def parse():
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-g', '--GPU_NUM', type=int, default=0, help='GPU number to allocate')
     parser.add_argument('-b', '--batch-size', type=int, default=1, help='Batch size')
-    parser.add_argument('-n', '--net_name', type=Path, default='test_varnet', help='Name of network')
-    parser.add_argument('-p', '--path_data', type=Path, default='/Data/leaderboard/', help='Directory of test data')
+    parser.add_argument('-n', '--net_name', type=Path, default='FIVarNet_submit', help='Name of network')
+    parser.add_argument('-p', '--path_data', type=Path, default='/home/Data/leaderboard', help='Directory of test data')
     
-    parser.add_argument('--cascade', type=int, default=1, help='Number of cascades | Should be less than 12')
-    parser.add_argument('--chans', type=int, default=9, help='Number of channels for cascade U-Net')
+    parser.add_argument('--cascade', type=int, default=3, help='Number of cascades | Should be less than 12')
+    parser.add_argument('--chans', type=int, default=24, help='Number of channels for cascade U-Net')
     parser.add_argument('--sens_chans', type=int, default=4, help='Number of channels for sensitivity map U-Net')
+    parser.add_argument('--unet_chans', type=int, default=19, help ='Number of channels for cascade U-Net')
     parser.add_argument("--input_key", type=str, default='kspace', help='Name of input key')
 
     args = parser.parse_args()
@@ -27,7 +28,16 @@ def parse():
 
 if __name__ == '__main__':
     args = parse()
-    args.exp_dir = '../result' / args.net_name / 'checkpoints'
+    """
+    # train 시킨 모델 불러오기
+    args.exp_dir_acc45 = '../result' / args.net_name / 'checkpoints_acc45'
+    args.exp_dir_acc89 = '../result' / args.net_name / 'checkpoints_acc89'
+    """
+
+    # 제출한 모델 불러오기
+    args.exp_dir_acc45 = Path('../result')
+    args.exp_dir_acc89 = Path('../result')
+
     
     public_acc, private_acc = None, None
 
