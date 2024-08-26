@@ -87,6 +87,10 @@ cd /root/fastMRI_main
 ```
 `/root` should be your current working directory before cloning.
 
+### Setting Up the Development Environment
+`pip install scikit-image h5py fastmri`
+Download these modules before running the following commands
+
 ### Training Commands
 
 ```python
