@@ -35,7 +35,7 @@ class SliceData(Dataset):
             for acc in mask_acc:
               for data in data_list:
                 mask_func = create_mask_for_mask_type(self.mask_type, self.center_fractions, [acc])
-                _, mask = apply_mask(data, mask_func, None) # mask.shape = [1, 1, ?, 1]
+                _, mask, _ = apply_mask(data, mask_func, None) # mask.shape = [1, 1, ?, 1]
                 mask = np.array(torch.squeeze(mask))
                 mask_list[(acc, data.shape[-2])] = mask # 마스크를 찾을 때에는 acc와 input의 열의 개수로 찾아야 함
             self.mask_list = mask_list
