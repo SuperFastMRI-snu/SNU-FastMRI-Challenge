@@ -22,24 +22,23 @@ class SliceData(Dataset):
         # For MRAugment
         self.DataAugmentor = DataAugmentor
         # For random mask
-        if not forward:
-            self.mask_type = args.mask_type
-            self.center_fractions = args.center_fractions
+        # if not forward:
+        self.mask_type = args.mask_type
+        self.center_fractions = args.center_fractions
 
-        if not forward:
+        # if not forward:
             # mask list 만들기
-            mask_acc = args.acc # [4, 5, 6, 7, 8, 9]
-            mask_list = {}
+        mask_acc = args.acc
+        mask_list = {}
 
-            # data에서 중요한 것은 [-2] 위치의 원소. mask 벡터의 크기가 바로 [-2] 원소이다.
-            data_list = [torch.randn(16, 768, 396, 2), torch.randn(16, 396, 768, 2), torch.randn(4, 768, 392, 2)]
-            for acc in mask_acc:
-              for data in data_list:
-                mask_func = create_mask_for_mask_type(self.mask_type, self.center_fractions, [acc])
-                _, mask = apply_mask(data, mask_func, None) # mask.shape = [1, 1, ?, 1]
-                mask = np.array(torch.squeeze(mask))
-                mask_list[(acc, data.shape[-2])] = mask # 마스크를 찾을 때에는 acc와 input의 열의 개수로 찾아야 함
-            self.mask_list = mask_list
+        data_list = [torch.randn(16, 768, 396, 2), torch.randn(16, 396, 768, 2), torch.randn(4, 768, 392, 2)]
+        for acc in mask_acc:
+          for data in data_list:
+            mask_func = create_mask_for_mask_type(self.mask_type, self.center_fractions, [acc])
+            _, mask = apply_mask(data, mask_func, None) # mask.shape = [1, 1, ?, 1]
+            mask = np.array(torch.squeeze(mask))
+            mask_list[(acc, data.shape[-2])] = mask # 마스크를 찾을 때에는 acc와 input의 열의 개수로 찾아야 함
+        self.mask_list = mask_list
 
         if not forward:
             image_files = list(Path(root / "image").iterdir())
@@ -63,7 +62,7 @@ class SliceData(Dataset):
                 else: # val 하는 경우
                     self.kspace_examples += [(fname, slice_ind, args.acc) for slice_ind in range(num_slices)]
             else: # eval 하는 경우
-                self.kspace_examples += [(fname, slice_ind) for slice_ind in range(num_slices)]
+                self.kspace_examples += [(fname, slice_ind, args.acc) for slice_ind in range(num_slices)]
 
 
     def _get_metadata(self, fname):
@@ -82,7 +81,9 @@ class SliceData(Dataset):
             image_fname, _ = self.image_examples[i]
 
         if self.forward: # eval 하는 경우
-            kspace_fname, dataslice = self.kspace_examples[i]
+            kspace_fname, dataslice, args_acc_list = self.kspace_examples[i]
+            args_acc = args_acc_list[0]
+            del args_acc_list
         else:
             if self.DataAugmentor != None: # train 하는 경우
                 kspace_fname, dataslice, args_acc = self.kspace_examples[i]
@@ -108,7 +109,7 @@ class SliceData(Dataset):
             input = torch.from_numpy(input)
             input = torch.stack((input.real, input.imag), dim=-1)
 
-            # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기 / random mask를 위한 p 설정
+            # augment된 kspace를 input으로 받기 / 그에 대응되는 target도 미리 받아두기 
             target = None
             if self.DataAugmentor != None:
               input, target = self.DataAugmentor(input, [target_size[-2],target_size[-1]]) # return 된 input.shape[-1]는 2이다. 실수부와 허수부로 나뉘어져 있다.
@@ -120,7 +121,8 @@ class SliceData(Dataset):
                 else:
                     mask = self.mask_list[(args_acc, input.shape[-2])]
             else: # eval 하는 경우
-                mask =  np.array(hf["mask"])
+                # mask =  np.array(hf["mask"])
+                mask = self.mask_list[(args_acc, input.shape[-2])]
 
             if self.forward:
                 target = -1

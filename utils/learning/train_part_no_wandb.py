@@ -17,7 +17,6 @@ from utils.common.loss_function import SSIMLoss
 # FIVarNet without block attention
 from utils.model.feature_varnet import FIVarNet_n_att
 
-
 from utils.mraugment.data_augment import DataAugmentor
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
@@ -48,6 +47,11 @@ def train_epoch(args, acc_steps, epoch, start_itr, model, data_loader, optimizer
             loss.backward()
 
             if ((iter + 1) % acc_steps == 0) or (iter + 1 == len_loader):
+                total_norm = 0
+                for p in model.parameters():
+                    total_norm += (p.grad.data**2).sum()
+                total_norm = total_norm ** (1. / 2)
+                print(total_norm)
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_norm)
                 optimizer.step()
                 optimizer.zero_grad()
@@ -209,8 +213,6 @@ def train(args):
 
       start_epoch = pretrained['epoch']
       start_itr = pretrained['itr']
-    
-    loss_type = SSIMLoss().to(device=device)
 
     # -----------------
     # data augmentation

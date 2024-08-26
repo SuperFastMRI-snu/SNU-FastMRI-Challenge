@@ -178,22 +178,22 @@ def train(args):
     start_epoch = 0
 
     # train중이던 model을 사용할 경우
-    # MODEL_FNAMES = args.exp_dir / 'model.pt'
-    # if Path(MODEL_FNAMES).exists():
-    #   pretrained = torch.load(MODEL_FNAMES)
-    #   pretrained_copy = copy.deepcopy(pretrained['model'])
-    #   for layer in pretrained_copy.keys():
-    #     if layer.split('.',2)[1].isdigit() and (wandb.config.cascade <= int(layer.split('.',2)[1]) <=11):
-    #         del pretrained['model'][layer]
+    MODEL_FNAMES = '/content/drive/MyDrive/fastMRI_main_FIVarNet_n_att/result/3, 24, 4, 19, 16_21/checkpoints/best_model21_89.pt'
+    #MODEL_FNAMES = args.exp_dir / 'model.pt'
+    if Path(MODEL_FNAMES).exists():
+      pretrained = torch.load(MODEL_FNAMES)
+      pretrained_copy = copy.deepcopy(pretrained['model'])
+      for layer in pretrained_copy.keys():
+        if layer.split('.',2)[1].isdigit() and (wandb.config.cascade <= int(layer.split('.',2)[1]) <=11):
+            del pretrained['model'][layer]
       
-    #   model.load_state_dict(pretrained['model'])
-    #   optimizer.load_state_dict(pretrained['optimizer'])
-    #   LRscheduler.load_state_dict(pretrained['LRscheduler'])
+      model.load_state_dict(pretrained['model'])
+      optimizer.load_state_dict(pretrained['optimizer'])
+      LRscheduler.load_state_dict(pretrained['LRscheduler'])
 
-    #   best_val_loss = pretrained['best_val_loss']
-    #   start_epoch = pretrained['epoch']
+      best_val_loss = pretrained['best_val_loss']
+      start_epoch = pretrained['epoch']
     
-    loss_type = SSIMLoss().to(device=device)
 
     # -----------------
     # data augmentation
@@ -204,10 +204,20 @@ def train(args):
     augmentor = DataAugmentor(args, current_epoch_func)
     # ------------------
 
-    train_loader = create_data_loaders(data_path = args.data_path_train, args = args, DataAugmentor = augmentor ,shuffle=True) #여기에 dataaugmentor를 argument 로 넣어줘야 함.
+    #train_loader = create_data_loaders(data_path = args.data_path_train, args = args, DataAugmentor = augmentor ,shuffle=True) #여기에 dataaugmentor를 argument 로 넣어줘야 함.
     val_loader = create_data_loaders(data_path = args.data_path_val, args = args, DataAugmentor = None)
 
     val_loss_log = np.empty((0, 2))
+    
+    val_loss, num_subjects, reconstructions, targets, inputs, val_time = validate(args, model, val_loader)
+
+    val_loss /= num_subjects
+    print(
+            f'ValLoss = {val_loss:.4g} ValTime = {val_time:.4f}s',
+        )
+    save_reconstructions(reconstructions, args.val_dir, 0, targets=targets, inputs=inputs)
+    
+    """
     for epoch in range(start_epoch, args.num_epochs):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
         
@@ -257,3 +267,4 @@ def train(args):
 
         # wandb에 log
         wandb.log({"train_loss": train_loss, "valid_loss": val_loss})
+    """

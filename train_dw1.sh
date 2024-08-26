@@ -8,13 +8,13 @@ python train_no_wandb.py \
   -m 1.0 \
   -r 50 \
   -i 100 \
-  -n 'ensemble-test' \
+  -n 'grad-check' \
   -t '/content/drive/MyDrive/Data/val' \
   -v '/content/drive/MyDrive/Data/val' \
   --cascade 3 \
-  --chans 12 \
-  --sens_chans 5 \
-  --unet_chans 5 \
+  --chans 24 \
+  --sens_chans 4 \
+  --unet_chans 19 \
   --input-key 'kspace' \
   --target-key 'image_label' \
   --max-key 'max' \

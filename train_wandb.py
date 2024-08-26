@@ -19,14 +19,14 @@ def parse():
     parser.add_argument('-g', '--GPU-NUM', type=int, default=0, help='GPU number to allocate')
     parser.add_argument('-b', '--batch-size', type=int, default=1, help='Batch size')
     parser.add_argument('-a', '--acc-steps', type=int, default=4, help='Steps of Gradient Accumulation')
-    parser.add_argument('-e', '--num-epochs', type=int, default=15, help='Number of epochs')
+    parser.add_argument('-e', '--num-epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('-p', '--lr-scheduler-patience', type=int, default=5, help='patience of ReduceLROnPlateau')
     parser.add_argument('-f', '--lr-scheduler-factor', type=float, default=0.1, help='factor of ReduceLROnPlateau')
     parser.add_argument('-m', '--max-norm', type=float, default=1.0, help='max_norm of gradient clipping')
     parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
     parser.add_argument('-i', '--save-itr-interval', type=int, default=100, help='itr interval of model save')
-    parser.add_argument('-t', '--data-path-train', type=Path, default='/content/drive/MyDrive/Data/val', help='Directory of train data')
+    parser.add_argument('-t', '--data-path-train', type=Path, default='/content/train', help='Directory of train data')
     parser.add_argument('-v', '--data-path-val', type=Path, default='/content/drive/MyDrive/Data/val', help='Directory of validation data')
     
     parser.add_argument('--cascade', type=int, default=3, help='Number of cascades | Should be less than 12') ## important hyperparameter
@@ -38,13 +38,14 @@ def parse():
     parser.add_argument('--max-key', type=str, default='max', help='Name of max key in attributes')
     parser.add_argument('--seed', type=int, default=430, help='Fix random seed')
 
-    parser.add_argument('--acc', type=int, default=[4, 5], help='accelerations on which the model will be trained')
+    parser.add_argument('--acc', type=int, default=[6, 7], help='accelerations on which the model will be trained')
 
     add_augmentation_specific_args(parser)
     args = parser.parse_args()
     return args
 
 def add_augmentation_specific_args(parser):
+    # 데이터 어그 잠깐 멈추기(나중에 True로 바꾸어 주어야 함!!!)
     parser.add_argument('--aug_on', default=True, help='This switch turns data augmentation on.', action='store_true')
     
     # --------------------------------------------
@@ -110,16 +111,16 @@ if __name__ == '__main__':
 
     parameters_dict = {
       'cascade': {
-          'values': [4]
+          'values': [3]
           },
       'chans': {
-          'values': [6]
+          'values': [24]
           },
       'sens_chans': {
-            'values': [3]
+            'values': [4]
           },
       'unet_chans': {
-            'values': [6]
+            'values': [19]
           },
     }
 
