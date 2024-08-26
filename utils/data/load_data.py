@@ -11,6 +11,7 @@ from utils.mraugment.data_augment import DataAugmentor
 from fastmri.data.subsample import create_mask_for_mask_type
 from fastmri.data.transforms import apply_mask
 
+
 class SliceData(Dataset):
     def __init__(self, root, transform, input_key, target_key, DataAugmentor, args, forward=False):
         self.transform = transform
