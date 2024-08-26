@@ -15,7 +15,9 @@ from utils.common.utils import save_reconstructions, ssim_loss, seed_fix
 from utils.common.loss_function import SSIMLoss
 
 # FIVarNet with acc fitted block attention
-from utils.model.feature_varnet import FIVarNet_acc_fit
+# from utils.model.feature_varnet import FIVarNet_acc_fit
+# FIVarNet without block attention
+from utils.model.feature_varnet import FIVarNet_n_att
 
 
 from utils.mraugment.data_augment import DataAugmentor
@@ -183,7 +185,7 @@ def train(args):
     torch.cuda.set_device(device)
     print('Current cuda device: ', torch.cuda.current_device())
 
-    model = FIVarNet_acc_fit(num_cascades=args.cascade, 
+    model = FIVarNet_n_att(num_cascades=args.cascade, 
                    chans=args.chans, 
                    sens_chans=args.sens_chans,
                    unet_chans=args.unet_chans)

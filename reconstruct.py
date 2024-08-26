@@ -13,13 +13,19 @@ def parse():
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-g', '--GPU_NUM', type=int, default=0, help='GPU number to allocate')
     parser.add_argument('-b', '--batch-size', type=int, default=1, help='Batch size')
-    parser.add_argument('-n', '--net_name', type=Path, default='test_varnet', help='Name of network')
-    parser.add_argument('-p', '--path_data', type=Path, default='/Data/leaderboard/', help='Directory of test data')
+    parser.add_argument('-n', '--net_name', type=Path, default='acc 6,7 ensemble test', help='Name of network')
+    parser.add_argument('-p', '--path_data', type=Path, default='/content/drive/MyDrive/Data/leaderboard', help='Directory of test data')
     
-    parser.add_argument('--cascade', type=int, default=1, help='Number of cascades | Should be less than 12')
-    parser.add_argument('--chans', type=int, default=9, help='Number of channels for cascade U-Net')
+    parser.add_argument('--cascade', type=int, default=3, help='Number of cascades | Should be less than 12')
+    parser.add_argument('--chans', type=int, default=24, help='Number of channels for cascade U-Net')
     parser.add_argument('--sens_chans', type=int, default=4, help='Number of channels for sensitivity map U-Net')
+    parser.add_argument('--unet_chans', type=int, default=19, help ='Number of channels for cascade U-Net')
     parser.add_argument("--input_key", type=str, default='kspace', help='Name of input key')
+
+    # acc 6,7 test
+    parser.add_argument('--acc', type=int, default=[6], help='accelerations on which the model will be trained')
+    parser.add_argument("--mask_type", choices=("random", "equispaced"), default="equispaced", type=str, help="Type of k-space mask",)
+    parser.add_argument("--center_fractions", nargs="+", default=[0.08], type=float, help="Number of center lines to use in mask",)
 
     args = parser.parse_args()
     return args
@@ -31,15 +37,15 @@ if __name__ == '__main__':
     
     public_acc, private_acc = None, None
 
-    assert(len(os.listdir(args.path_data)) == 2)
+    # assert(len(os.listdir(args.path_data)) == 2)
 
-    for acc in os.listdir(args.path_data):
+    for acc in ['acc5', 'acc9']:
       if acc in ['acc4', 'acc5', 'acc8']:
         public_acc = acc
       else:
         private_acc = acc
         
-    assert(None not in [public_acc, private_acc])
+    # assert(None not in [public_acc, private_acc])
 
     start_time = time.time()
     
@@ -47,12 +53,16 @@ if __name__ == '__main__':
     args.data_path = args.path_data / public_acc # / "kspace"    
     args.forward_dir = '../result' / args.net_name / 'reconstructions_leaderboard' / 'public'
     print(f'Saved into {args.forward_dir}')
+    # acc 6,7 test
+    args.acc = [5]
     forward(args)
     
     # Private Acceleration
     args.data_path = args.path_data / private_acc # / "kspace"    
     args.forward_dir = '../result' / args.net_name / 'reconstructions_leaderboard' / 'private'
     print(f'Saved into {args.forward_dir}')
+    # acc 6,7 test
+    args.acc = [9]
     forward(args)
     
     reconstructions_time = time.time() - start_time

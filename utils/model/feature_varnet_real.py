@@ -16,13 +16,12 @@ import torch.distributed as dist
 import numpy as np
 import math
 import fastmri
+from fastmri.data import transforms
 from fastmri.data.transforms import center_crop, batched_mask_center
 from fastmri.fftc import ifft2c_new as ifft2c
 from fastmri.fftc import fft2c_new as fft2c
 from fastmri.coil_combine import rss_complex, rss
 from fastmri.math import complex_abs, complex_mul, complex_conj
-from fastmri.data import transforms
-
 
 def image_crop(image: Tensor, crop_size: Optional[Tuple[int, int]] = None) -> Tensor:
     if crop_size is None:
@@ -131,6 +130,7 @@ class NormStats(nn.Module):
 
 class FeatureImage(NamedTuple):
     features: Tensor
+    acceleration: Optional[int] = None
     sens_maps: Optional[Tensor] = None
     crop_size: Optional[Tuple[int, int]] = None
     means: Optional[Tensor] = None
@@ -180,6 +180,99 @@ class FeatureDecoder(nn.Module):
         variances = variances.view(1, -1, 1, 1)
         return self.decoder(features) * torch.sqrt(variances) + means
 
+
+class AttentionPE(nn.Module):
+    def __init__(self, in_chans: int):
+        super().__init__()
+        self.in_chans = in_chans
+
+        self.norm = nn.InstanceNorm2d(in_chans)
+        self.q = nn.Conv2d(in_chans, in_chans, kernel_size=1, stride=1, padding=0)
+        self.k = nn.Conv2d(in_chans, in_chans, kernel_size=1, stride=1, padding=0)
+        self.v = nn.Conv2d(in_chans, in_chans, kernel_size=1, stride=1, padding=0)
+        self.proj_out = nn.Conv2d(
+            in_chans, in_chans, kernel_size=1, stride=1, padding=0
+        )
+        self.dilated_conv = nn.Conv2d(
+            in_chans, in_chans, kernel_size=3, stride=1, padding=2, dilation=2
+        )
+
+    def reshape_to_blocks(self, x: Tensor, accel: int) -> Tensor:
+        chans = x.shape[1]
+        pad_total = (accel - (x.shape[3] - accel)) % accel
+        pad_right = pad_total // 2
+        pad_left = pad_total - pad_right
+        x = F.pad(x, (pad_left, pad_right, 0, 0), "reflect")
+        return (
+            torch.stack(x.chunk(chunks=accel, dim=3), dim=-1)
+            .view(chans, -1, accel)
+            .permute(1, 0, 2)
+            .contiguous()
+        )
+
+    def reshape_from_blocks(
+        self, x: Tensor, image_size: Tuple[int, int], accel: int
+    ) -> Tensor:
+        chans = x.shape[1]
+        num_freq, num_phase = image_size
+        x = (
+            x.permute(1, 0, 2)
+            .reshape(1, chans, num_freq, -1, accel)
+            .permute(0, 1, 2, 4, 3)
+            .reshape(1, chans, num_freq, -1)
+        )
+        padded_phase = x.shape[3]
+        pad_total = padded_phase - num_phase
+        pad_right = pad_total // 2
+        pad_left = pad_total - pad_right
+        return x[:, :, :, pad_left : padded_phase - pad_right]
+
+    def get_positional_encodings(
+        self, seq_len: int, embed_dim: int, device: str
+    ) -> Tensor:
+        freqs = torch.tensor(
+            [1 / (10000 ** (2 * (i // 2) / embed_dim)) for i in range(embed_dim)],
+            device=device,
+        )
+        freqs = freqs.unsqueeze(0)
+        positions = torch.arange(seq_len, dtype=torch.float, device=device).unsqueeze(1)
+        scaled = positions * freqs
+        sin_encodings = torch.sin(scaled)
+        cos_encodings = torch.cos(scaled)
+        encodings = torch.cat([sin_encodings, cos_encodings], dim=1)[:, :embed_dim]
+        return encodings
+
+    def forward(self, x: Tensor, accel: int) -> Tensor:
+        im_size = (x.shape[2], x.shape[3])
+        h_ = x
+        h_ = self.norm(h_)
+
+        pos_enc = self.get_positional_encodings(x.shape[2], x.shape[3], h_.device.type)
+
+        h_ = h_ + pos_enc
+
+        q = self.dilated_conv(self.q(h_))
+        k = self.dilated_conv(self.k(h_))
+        v = self.dilated_conv(self.v(h_))
+
+        # compute attention
+        c = q.shape[1]
+        q = self.reshape_to_blocks(q, accel)
+        k = self.reshape_to_blocks(k, accel)
+        q = q.permute(0, 2, 1)  # b,hw,c
+        w_ = torch.bmm(q, k)  # b,hw,hw    w[b,i,j]=sum_c q[b,i,c]k[b,c,j]
+        w_ = w_ * (int(c) ** (-0.5))
+        w_ = torch.nn.functional.softmax(w_, dim=2)
+
+        # attend to values
+        v = self.reshape_to_blocks(v, accel)
+        w_ = w_.permute(0, 2, 1)  # b,hw,hw (first hw of k, second of q)
+        h_ = torch.bmm(v, w_)  # b, c,hw (hw of q) h_[b,c,j] = sum_i v[b,c,i] w_[b,i,j]
+        h_ = self.reshape_from_blocks(h_, im_size, accel)
+
+        h_ = self.proj_out(h_)
+
+        return x + h_
 
 class Unet(nn.Module):
     """
@@ -355,7 +448,6 @@ class TransposeConvBlock(nn.Module):
             Output tensor of shape `(N, out_chans, H*2, W*2)`.
         """
         return self.layers(image)
-
 
 class NormUnet(nn.Module):
     """
@@ -543,7 +635,6 @@ class SensitivityModel(nn.Module):
 
         return x
 
-
 class VarNetBlock(nn.Module):
     """
     Model block for end-to-end variational network.
@@ -587,7 +678,6 @@ class VarNetBlock(nn.Module):
         )
 
         return current_kspace - soft_dc - model_term
-
 
 
 class Unet2d(nn.Module):
@@ -709,7 +799,7 @@ class UnetLevel(nn.Module):
         return image
 
 
-class FIVarNet_n_att(nn.Module):
+class FIVarNet_acc_fit(nn.Module):
     def __init__(
         self,
         num_cascades: int = 12,
@@ -739,12 +829,13 @@ class FIVarNet_n_att(nn.Module):
         for ind in range(num_cascades):
             use_image_conv = ind in self.image_conv_cascades
             cascades.append(
-                FeatureVarNetBlock(
+                AttentionFeatureVarNetBlock(
                     encoder=self.encoder,
                     decoder=self.decoder,
                     feature_processor=Unet2d(
                         in_chans=chans, out_chans=chans, chans=unet_chans, num_pool_layers=pools
                     ),
+                    attention_layer=AttentionPE(in_chans=chans),
                     use_extra_feature_conv=use_image_conv,
                 )
             )
@@ -769,6 +860,7 @@ class FIVarNet_n_att(nn.Module):
         self,
         masked_kspace: Tensor,
         mask: Tensor,
+        acceleration: int,
         crop_size: Optional[Tuple[int, int]],
         num_low_frequencies: Optional[int],
     ) -> FeatureImage:
@@ -782,6 +874,7 @@ class FIVarNet_n_att(nn.Module):
 
         return FeatureImage(
             features=features,
+            acceleration=acceleration,
             sens_maps=sens_maps,
             crop_size=crop_size,
             means=means,
@@ -794,6 +887,7 @@ class FIVarNet_n_att(nn.Module):
         self,
         masked_kspace: Tensor,
         mask: Tensor,
+        acceleration: int,
         num_low_frequencies: Optional[int] = None,
         crop_size: Optional[Tuple[int, int]] = None,
     ) -> Tensor:
@@ -802,6 +896,7 @@ class FIVarNet_n_att(nn.Module):
         feature_image = self._encode_input(
             masked_kspace=masked_kspace,
             mask=mask,
+            acceleration=acceleration,
             crop_size=crop_size,
             num_low_frequencies=num_low_frequencies,
         )
@@ -826,18 +921,20 @@ class FIVarNet_n_att(nn.Module):
         return result[..., (height - 384) // 2 : 384 + (height - 384) // 2, (width - 384) // 2 : 384 + (width - 384) // 2]
 
 
-class FeatureVarNetBlock(nn.Module):
+class AttentionFeatureVarNetBlock(nn.Module):
     def __init__(
         self,
         encoder: FeatureEncoder,
         decoder: FeatureDecoder,
         feature_processor: Unet2d,
+        attention_layer: AttentionPE,
         use_extra_feature_conv: bool = False,
     ):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.feature_processor = feature_processor
+        self.attention_layer = attention_layer
         self.use_image_conv = use_extra_feature_conv
         self.dc_weight = nn.Parameter(torch.ones(1))
         feature_chans = self.encoder.feature_chans
@@ -910,7 +1007,7 @@ class FeatureVarNetBlock(nn.Module):
 
         return features
 
-    def forward(self, feature_image: FeatureImage) -> FeatureImage:
+    def forward(self, feature_image: FeatureImage, acceleration: Optional [int] = 4) -> FeatureImage:
         feature_image = feature_image._replace(
             features=self.input_norm(feature_image.features)
         )
@@ -927,7 +1024,9 @@ class FeatureVarNetBlock(nn.Module):
         file_name = f'kspace_{timestamp}.mat'
         savemat(file_name, {'kspace_': new_ref_kspace})
         """
-
+        feature_image = feature_image._replace(
+            features=self.attention_layer(feature_image.features, feature_image.acceleration)
+        )
         new_features = new_features - self.apply_model_with_crop(feature_image)
 
         if self.use_image_conv:
@@ -935,3 +1034,4 @@ class FeatureVarNetBlock(nn.Module):
             new_features = new_features + self.output_conv(new_features)
 
         return feature_image._replace(features=new_features)
+

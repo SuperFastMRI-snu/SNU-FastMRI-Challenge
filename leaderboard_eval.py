@@ -104,21 +104,21 @@ if __name__ == '__main__':
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     parser.add_argument('-g', '--GPU_NUM', type=int, default=0)
-    parser.add_argument('-lp', '--path_leaderboard_data', type=Path, default='/Data/leaderboard/')
+    parser.add_argument('-lp', '--path_leaderboard_data', type=Path, default='/content/drive/MyDrive/Data/leaderboard')
     
     """
     Modify Path Below To Test Your Results
     """
-    parser.add_argument('-yp', '--path_your_data', type=Path, default='../result/test_Varnet/reconstructions_leaderboard/')
+    parser.add_argument('-yp', '--path_your_data', type=Path, default='../result/acc 6,7 ensemble test/reconstructions_leaderboard/')
     parser.add_argument('-key', '--output_key', type=str, default='reconstruction')
     
     args = parser.parse_args()
 
     public_acc, private_acc = None, None
 
-    assert(len(os.listdir(args.path_leaderboard_data)) == 2)
+    # assert(len(os.listdir(args.path_leaderboard_data)) == 2)
 
-    for acc in os.listdir(args.path_leaderboard_data):
+    for acc in ['acc5', 'acc9']: #os.listdir(args.path_leaderboard_data):
       if acc in ['acc4', 'acc5', 'acc8']:
         public_acc = acc
       else:
