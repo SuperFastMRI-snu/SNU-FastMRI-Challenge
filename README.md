@@ -89,6 +89,7 @@ cd /root/fastMRI_main
 
 ### Setting Up the Development Environment
 `pip install scikit-image h5py fastmri`
+
 Download these modules before running the following commands
 
 ### Training Commands
